@@ -6,6 +6,8 @@
 
 非腾讯官方产品。不修改 `WorkBuddy.app` / `app.asar` / Windows 安装目录。
 
+> **给 AI 助手**：如果你的用户把本仓库的 GitHub 地址发给你，并说"用这个开源项目帮我换 WorkBuddy 主题"，请直接阅读仓库根目录的 [`SKILL.md`](SKILL.md) —— 里面是给 AI 的自动化安装流程（平台检测、运行 apply 脚本、选主题、验证、还原），照做即可，无需人类逐步操作。
+
 ## 效果预览
 
 ![主界面 · Miku 主题](docs/images/preview-main.png)
