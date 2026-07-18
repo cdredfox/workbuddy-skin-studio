@@ -89,9 +89,11 @@ body[data-application-name=workbuddy] {
 #root {
   color: var(--wb-text) !important;
   background:
+    linear-gradient(180deg, var(--wb-surface) 0 40px, transparent 40px),
     linear-gradient(90deg, color-mix(in srgb, var(--wb-surface) 96%, transparent) 0 22%, transparent 46%),
     linear-gradient(180deg, transparent 0 45%, color-mix(in srgb, var(--wb-surface) 78%, transparent) 78% 100%),
     url(${JSON.stringify(heroDataUrl)}) right center / cover no-repeat fixed !important;
+  background-position: 0 0, 0 0, 0 0, right 32px !important;
 }
 
 /* 关键：teams-container 是 #root 直接子层，默认有不透明灰底，会完全盖住背景图 */
