@@ -52,7 +52,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   document.getElementById(data.menuId)?.remove();
   const root = document.createElement("div");
   root.id = data.menuId;
-  root.style.cssText = "position:fixed;top:48px;right:16px;z-index:2147483000;font:500 13px/1.4 system-ui;user-select:none;";
+  root.style.cssText = "position:fixed;bottom:16px;right:16px;top:auto;z-index:2147483000;font:500 13px/1.4 system-ui;user-select:none;";
 
   const button = document.createElement("button");
   button.type = "button";
@@ -263,8 +263,35 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   const saved = loadCustom();
   if (saved) ensureCustomRow(saved);
 
-  button.addEventListener("click", () => {
-    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  button.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startRight = parseFloat(root.style.right || 0);
+    const startBottom = parseFloat(root.style.bottom || 0);
+    let moved = false;
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!moved && Math.sqrt(dx * dx + dy * dy) > 4) {
+        moved = true;
+        panel.style.display = "none";
+      }
+      if (moved) {
+        root.style.right = Math.max(0, startRight - dx) + "px";
+        root.style.bottom = Math.max(0, startBottom - dy) + "px";
+      }
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (!moved) {
+        panel.style.display = panel.style.display === "none" ? "block" : "none";
+      }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   });
 
   root.append(button, panel, picker);
