@@ -1,5 +1,6 @@
 #!/bin/bash
 # WorkBuddy Skin Studio — 暂停皮肤，恢复原生界面（不重启 WorkBuddy）
+unset ELECTRON_RUN_AS_NODE
 cd "$(dirname "$0")/.."
 
 NODE=""

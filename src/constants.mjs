@@ -5,7 +5,7 @@ export const PRODUCT_ID = "workbuddy-skin-studio";
 export const PRODUCT_NAME = "WorkBuddy Skin Studio";
 export const STATE_SCHEMA_VERSION = 1;
 export const THEME_SCHEMA_VERSION = 1;
-export const DEFAULT_THEME_ID = "miku-light";
+export const DEFAULT_THEME_ID = "sunny-orchard";
 export const DEFAULT_CDP_PORT = 9223;
 export const EXPECTED_BUNDLE_ID = "com.workbuddy.workbuddy";
 
@@ -24,6 +24,7 @@ export function resolveStudioPaths({ home = homedir() } = {}) {
     stateRoot,
     statePath: join(stateRoot, "state.json"),
     logPath: join(stateRoot, "injector.log"),
+    themeCacheRoot: join(stateRoot, "cache", "themes"),
     userThemesRoot: join(stateRoot, "themes"),
   };
 }

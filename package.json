@@ -1,6 +1,6 @@
 {
   "name": "workbuddy-skin-studio",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "bin": {
@@ -11,6 +11,8 @@
     "doctor": "node src/cli.mjs doctor",
     "status": "node src/cli.mjs status",
     "list": "node src/cli.mjs list",
-    "apply": "node src/cli.mjs apply"
+    "prepare": "node src/cli.mjs prepare",
+    "apply": "node src/cli.mjs apply",
+    "terminal": "node src/terminal-handoff.mjs"
   }
 }

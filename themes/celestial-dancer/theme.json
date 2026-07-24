@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "celestial-dancer",
+  "name": "星河飞天",
+  "hero": "hero.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/celestial-dancer.webp",
+  "heroSha256": "6ad942553774d25ca2c89d3ba2c17e2aa06d550686a3edb56817bab35c235ff6",
+  "heroBytes": 176572,
+  "colors": {
+    "accent": "#D9924F",
+    "secondary": "#55AFC0",
+    "surface": "#171D33",
+    "text": "#F2E7D4"
+  },
+  "copy": null
+}

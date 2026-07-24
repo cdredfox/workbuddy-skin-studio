@@ -34,7 +34,7 @@ function defaults(overrides) {
   return {
     bundledThemesRoot: join(sourceRoot, "themes"),
     userThemesRoot: paths.userThemesRoot,
-    loadTheme,
+    loadTheme: (themePath) => loadTheme(themePath, { cacheRoot: paths.themeCacheRoot }),
     listThemes,
     createSingleImageTheme,
     applySkin,
@@ -52,7 +52,7 @@ export async function runCli(argv, overrides = {}) {
 
   if (command === "help") {
     return {
-      commands: ["list", "create --image PATH --name NAME", "apply [--theme ID] [--port 9223]", "pause", "status", "doctor"],
+      commands: ["list", "create --image PATH --name NAME", "prepare --theme ID", "apply [--theme ID] [--port 9223]", "pause", "status", "doctor"],
     };
   }
   if (command === "list") return deps.listThemes({ roots });
@@ -61,25 +61,16 @@ export async function runCli(argv, overrides = {}) {
     if (!args.name) throw new Error("create 需要 --name");
     return deps.createSingleImageTheme({ imagePath: args.image, name: args.name, storeRoot: deps.userThemesRoot });
   }
-  if (command === "apply") {
+  if (command === "prepare" || command === "apply") {
     const themeId = args.theme ?? DEFAULT_THEME_ID;
     const themes = await deps.listThemes({ roots });
     const selected = themes.find((theme) => theme.id === themeId);
     if (!selected) throw new Error(`找不到主题：${themeId}`);
     const loadedTheme = await deps.loadTheme(selected.path);
-    const menuThemes = [];
-    for (const theme of themes) {
-      if (theme.id === themeId) {
-        menuThemes.push(loadedTheme);
-        continue;
-      }
-      try {
-        menuThemes.push(await deps.loadTheme(theme.path));
-      } catch {
-        // 坏主题不阻塞换肤，只是不进菜单
-      }
+    if (command === "prepare") {
+      return { prepared: true, themeId, cachedPath: loadedTheme.heroPath };
     }
-    return deps.applySkin({ loadedTheme, themes: menuThemes, port: portFrom(args.port) });
+    return deps.applySkin({ loadedTheme, port: portFrom(args.port) });
   }
   if (command === "pause" || command === "restore") {
     return deps.removeSkin({ port: portFrom(args.port) });
