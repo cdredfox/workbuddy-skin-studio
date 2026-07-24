@@ -73,7 +73,32 @@ that Agent and interrupts its process tree.
    PowerShell. It does not execute the command.
 8. Tell the user that the terminal is open and the command is on the clipboard.
    Ask them to press `⌘V` then Enter on macOS, or `Ctrl+V` then Enter on Windows.
-   Also display the returned `command` as a fallback.
+   Also display the returned `command` as a fallback. Do not claim the theme is
+   already applied before the user runs that command.
+
+   Respond in the user's language and keep this structure, adapting the paste
+   shortcut, selected theme name, style description, and exact returned command:
+
+   ```text
+   ✅ 系统终端已打开，应用命令也已复制到你的剪贴板。
+
+   请在已打开的终端窗口里按 ⌘V 粘贴命令，然后按 Enter 执行。
+   终端会自动关闭 WorkBuddy、以调试模式重启，并注入「主题名称」主题。
+   如果终端没自动打开，或剪贴板没内容，请手动打开终端并运行这条命令：
+
+   RETURNED_COMMAND
+
+   ⚠️ 安全提示：重启后 WorkBuddy 会开启本地调试端口
+   （127.0.0.1:9223）。期间不要运行来源不明的本地软件，避免同机其他
+   进程借调试端口操作界面。
+
+   ℹ️ 该 Skill 只保证 WorkBuddy 当前单次启动周期内换肤有效（这是 CDP
+   注入方案的特性）。如果之后再次重启 WorkBuddy，皮肤可能消失，重新
+   运行一次 Skill 即可恢复。
+
+   执行成功后，WorkBuddy 将使用「主题名称」——主题风格描述。想恢复
+   默认外观或更换其他皮肤，随时再次运行此 Skill。
+   ```
 
 For `恢复原生界面`, use:
 

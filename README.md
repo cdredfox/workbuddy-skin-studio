@@ -1,8 +1,8 @@
 # workbuddy-skin · WorkBuddy 换肤
 
-**给 WorkBuddy 桌面端换一张会呼吸的脸。**
+**让喜欢的画面，成为你的 WorkBuddy 工作背景。**
 
-一张图，一种心情 · 本机 CDP 注入 · 不改官方安装包 · macOS + Windows
+选主题、配色彩、随时还原 · 本地 CDP 实时注入 · 官方程序零修改 · 支持 macOS 与 Windows
 
 非腾讯官方产品。不修改 `WorkBuddy.app` / `app.asar` / Windows 安装目录。
 
@@ -37,13 +37,23 @@
 
 ### 用 AI 选择主题并生成命令（推荐）
 
-不想自己敲命令？把本仓库的 GitHub 地址发给任意 AI 助手（CodeBuddy / Claude / Cursor 等），再加上一句：
+不想自己敲命令？把本仓库的 GitHub 地址发给任意 AI 助手（WorkBuddy / CodeBuddy / Claude Code / ChatGPT 等），再加上一句：
 
 > 用这个开源项目帮我更换 WorkBuddy 的主题
 
 AI 会读取 [`SKILL.md`](SKILL.md)，先展示 8 个预设、“上传自定义图片”和“恢复原生界面”。你选定后，AI 只下载该主题并缓存；确认已保存当前工作后，AI 会自动打开外部终端，并把包含正确路径和主题 id 的命令复制到剪贴板。
 
 在 macOS 按 `⌘V`、Windows 按 `Ctrl+V`，然后按回车即可。真正的换肤步骤仍由外部终端执行；如果让 WorkBuddy 内置 Agent 直接运行，WorkBuddy 关闭时任务也会被中断。
+
+终端打开后，AI 会明确告诉你粘贴和执行方式、所选主题、备用命令以及本地调试端口的安全提示。例如：
+
+> ✅ 系统终端已打开，应用命令也已复制到你的剪贴板。
+>
+> 请在已打开的终端窗口里粘贴命令并按 **Enter** 执行。终端会自动关闭 WorkBuddy、以调试模式重启，并注入你选择的主题。如果终端没有自动打开或剪贴板没有内容，请手动打开终端并运行 AI 给出的备用命令。
+>
+> ⚠️ 重启后 WorkBuddy 会开启本地调试端口（`127.0.0.1:9223`），期间不要运行来源不明的本地软件，避免同机其他进程借调试端口操作界面。
+>
+> ℹ️ 该 Skill 只保证 WorkBuddy 当前单次启动周期内换肤有效（这是 CDP 注入方案的特性）。如果之后再次重启 WorkBuddy，皮肤可能消失，重新运行一次 Skill 即可恢复。
 
 > 想指定主题也可直接说，例如「用星河飞天」或「帮我换成 sunny-orchard」。
 
@@ -76,7 +86,7 @@ env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/pause.command'
 .\scripts\pause.ps1
 ```
 
-> 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重跑一次 apply 即可回来。
+> 注意：该 Skill 只保证 WorkBuddy 当前单次启动周期内换肤有效（这是 CDP 注入方案的特性）。如果之后再次重启 WorkBuddy，皮肤可能消失，重新运行一次 Skill 即可恢复。
 
 ## 应用前选择主题
 
