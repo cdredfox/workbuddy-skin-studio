@@ -1,160 +1,189 @@
 ---
-name: workbuddy-skin-studio
+name: workbuddy-skin
 description: >-
-  Apply a reversible theme/skin to the WorkBuddy desktop app (Tencent AI office
-  agent) via local Chromium DevTools Protocol (CDP) injection. Use when the user
-  wants to change WorkBuddy's appearance/theme/skin, references an open-source
-  WorkBuddy theming project by GitHub URL, or says phrases like "帮我换 WorkBuddy
-  主题/皮肤", "用这个开源项目帮我更换 WorkBuddy 的主题", or "change my WorkBuddy
-  theme". Never modifies app.asar, the official install directory, or code signing.
+  Prepare and apply reversible themes/skins for the WorkBuddy desktop app
+  through local Chromium DevTools Protocol injection. Use when the user wants
+  to install, apply, change, upload, pause, or inspect a WorkBuddy theme/skin;
+  references the workbuddy-skin GitHub project; or says phrases such as
+  "帮我换 WorkBuddy 主题/皮肤". Present theme choices before applying, wait for
+  the user's selection, download only that selected preset from a verified
+  GitHub Release into the local cache, then open the external system terminal
+  and copy one exact command for the user to paste and run. Never run a command
+  that closes WorkBuddy from its in-app Agent, and never modify app.asar or the
+  official install.
 ---
 
-# WorkBuddy Skin Studio
+# workbuddy-skin
 
-Reversible WorkBuddy desktop theming through local CDP injection. The tool
-restarts WorkBuddy with `--remote-debugging-port=9223`, discovers its renderer
-(`renderer/index.html`), and injects CSS + a 🎨 theme menu into the live UI.
-No official files are touched.
+Apply one selected theme through local CDP injection. Do not inject an in-app
+theme button, menu, or file picker.
 
-## When this skill applies
+## Required interaction
 
-- The user gives you a GitHub URL for `workbuddy-skin-studio` (or similar) and
-  asks you to install / apply / use it to theme WorkBuddy.
-- The user wants to change WorkBuddy's look (color theme, background image,
-  custom uploaded image) without editing the official app.
-- The user reports the theme disappeared after a WorkBuddy restart and wants it
-  reapplied, or wants to revert to the native look.
+Never run `scripts/apply.command`, `scripts/apply.ps1`, or another command that
+closes or restarts WorkBuddy from the in-app Agent. Closing WorkBuddy terminates
+that Agent and interrupts its process tree.
 
-## Prerequisites
+1. Detect macOS or Windows and resolve the absolute path of this Skill folder.
+2. If the user did not already specify a theme, show the choices below and stop
+   to wait for their answer:
 
-- **WorkBuddy desktop installed** (this tool themes the desktop app, not web).
-- **Node.js 18+** on PATH (the injector is plain Node, cross-platform).
-- macOS **or** Windows. (Linux is not supported by WorkBuddy's desktop build.)
-- Warn the user once: applying **restarts WorkBuddy** and any unsaved in-app
-  work is lost. Ask them to save first.
+   - `sunny-orchard` — 晴空果园，天蓝与草绿浅色
+   - `ocean-friends` — 碧海伙伴，海蓝与新绿浅色
+   - `sea-scroll` — 沧海书影，暖金与青灰浅色
+   - `celestial-dancer` — 星河飞天，鎏金与青蓝深色
+   - `inkblade-surge` — 墨锋破浪，水蓝与鎏金深色
+   - `bamboo-swordheart` — 竹影剑心，青灰与古金深色
+   - `cloud-cliff-pines` — 云崖听松，松青宣纸浅色
+   - `pine-crane-mist` — 松鹤烟岚，青黛淡金浅色
+   - `上传自定义图片` — attach a PNG, JPG, JPEG, or WebP
+   - `恢复原生界面`
 
-## Platform detection (run first)
-
-- macOS: shell `uname` returns `Darwin`, or `$OSTYPE` starts with `darwin`.
-- Windows: PowerShell `$IsWindows` is `$true`, or `$env:OS` is `Windows_NT`.
-- Choose the matching branch below.
-
-## Workflow — macOS
-
-1. Clone / open the repo, then run the launcher (double-click works, or CLI):
-
-   ```bash
-   # default theme (miku-light)
-   ./scripts/apply.command
-
-   # or a specific theme via the cross-platform CLI
-   node src/cli.mjs apply --theme genshin-night
-   ```
-
-   `apply.command` quits WorkBuddy, relaunches it with the CDP port, waits for
-   the debugger, and injects the skin.
-2. Verify:
+   Also include existing user-created themes returned by
+   `node src/cli.mjs list`, if any.
+3. If the user chooses a built-in or existing custom theme, validate its id
+   against `node src/cli.mjs list`.
+4. If the user chooses a new custom image, wait for an accessible attachment.
+   Infer a display name from the filename or ask for one, then safely prepare
+   the theme without restarting WorkBuddy:
 
    ```bash
-   node src/cli.mjs status
+   node src/cli.mjs create --image "/absolute/path/to/image" --name "主题名称"
    ```
 
-   Expect an injected/active state and the WorkBuddy renderer listed.
-3. A 🎨 button appears at the top-right of WorkBuddy. Tell the user they can
-   switch themes, upload a custom image, or revert to native from that menu.
+   Read the returned `id`.
+5. Prepare the selected theme before closing WorkBuddy:
 
-## Workflow — Windows
-
-1. From the repo directory, run in **PowerShell** (not cmd):
-
-   ```powershell
-   # default theme (miku-light)
-   .\scripts\apply.ps1
-
-   # or a specific theme
-   .\scripts\apply.ps1 -Theme genshin-night
+   ```bash
+   node src/cli.mjs prepare --theme THEME_ID
    ```
 
-   If you hit an execution-policy error, run once:
-   `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then retry.
-2. If `apply.ps1` cannot locate `WorkBuddy.exe`, run the locator and follow its
-   printed hint (often you just need to launch WorkBuddy once so the path is
-   registered):
+   Built-in themes download only at this point, then remain in the verified
+   local cache. Custom themes already stored locally do not download anything.
+   If preparation fails, report the network or integrity error and do not
+   continue to the terminal handoff.
+6. Warn the user that WorkBuddy will close and unsaved work will be lost.
+7. After the user confirms their work is saved, run the safe handoff helper:
 
-   ```powershell
-   .\scripts\find-workbuddy.ps1
+   ```bash
+   node src/terminal-handoff.mjs --action apply --theme THEME_ID
    ```
 
-3. Verify:
+   This copies the exact command and opens the external system Terminal or
+   PowerShell. It does not execute the command.
+8. Tell the user that the terminal is open and the command is on the clipboard.
+   Ask them to press `⌘V` then Enter on macOS, or `Ctrl+V` then Enter on Windows.
+   Also display the returned `command` as a fallback. Do not claim the theme is
+   already applied before the user runs that command.
 
-   ```powershell
-   node src/cli.mjs status
+   Respond in the user's language and keep this structure, adapting the paste
+   shortcut, selected theme name, style description, and exact returned command:
+
+   ```text
+   ✅ 系统终端已打开，应用命令也已复制到你的剪贴板。
+
+   请在已打开的终端窗口里按 ⌘V 粘贴命令，然后按 Enter 执行。
+   终端会自动关闭 WorkBuddy、以调试模式重启，并注入「主题名称」主题。
+   如果终端没自动打开，或剪贴板没内容，请手动打开终端并运行这条命令：
+
+   RETURNED_COMMAND
+
+   ⚠️ 安全提示：重启后 WorkBuddy 会开启本地调试端口
+   （127.0.0.1:9223）。期间不要运行来源不明的本地软件，避免同机其他
+   进程借调试端口操作界面。
+
+   ℹ️ 该 Skill 只保证 WorkBuddy 当前单次启动周期内换肤有效（这是 CDP
+   注入方案的特性）。如果之后再次重启 WorkBuddy，皮肤可能消失，重新
+   运行一次 Skill 即可恢复。
+
+   执行成功后，WorkBuddy 将使用「主题名称」——主题风格描述。想恢复
+   默认外观或更换其他皮肤，随时再次运行此 Skill。
    ```
 
-4. Same 🎨 menu appears top-right in WorkBuddy.
-
-## Choosing a theme
-
-- List available themes: `node src/cli.mjs list` (macOS) / same via PowerShell.
-- Built-ins include `miku-light`, `miku-488137`, `genshin-dawn`, `genshin-night`,
-  `deepspace-dawn`, `deepspace-star`, `naruto-hokage`, `naruto-sasuke`,
-  `wuthering-echo`, `wuthering-tide`.
-- If the user names a mood/character (e.g. "dark Genshin"), map it to the
-  closest id, or just apply the default and let them pick from the 🎨 menu.
-- Custom image: `node src/cli.mjs create --image "/path/to/hero.webp" --name "My Skin"`
-  then `node src/cli.mjs apply --theme my-skin`. The in-app 🎨 menu also supports
-  "＋ 自定义图片" with automatic color extraction.
-
-## Pause / restore to native
+For `恢复原生界面`, use:
 
 ```bash
-# macOS
-./scripts/pause.command
-
-# Windows (PowerShell)
-.\scripts\pause.ps1
+node src/terminal-handoff.mjs --action pause
 ```
 
-This removes the injected skin and relaunches WorkBuddy normally. The official
-install is always left untouched.
+If the helper cannot access the clipboard or open the terminal, display the
+platform-specific command below and ask the user to open a terminal manually.
+
+## Command to give — macOS
+
+Escape single quotes in paths before constructing the command:
+
+```bash
+cd '/absolute/path/to/workbuddy-skin' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'sunny-orchard'
+```
+
+For `恢复原生界面`, give:
+
+```bash
+cd '/absolute/path/to/workbuddy-skin' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/pause.command'
+```
+
+Always invoke macOS `.command` files through `/bin/bash`. Skill installation
+may not preserve executable mode bits, so direct `./scripts/apply.command` can
+fail with `permission denied`. Unset `ELECTRON_RUN_AS_NODE` so WorkBuddy's
+environment cannot make Node treat the launcher path as an Electron module.
+
+## Command to give — Windows
+
+Give one PowerShell command. Use `-ExecutionPolicy Bypass` only for this child
+process; never change the user's global execution policy:
+
+```powershell
+Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\apply.ps1' -Theme 'sunny-orchard'
+```
+
+For `恢复原生界面`, give:
+
+```powershell
+Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\pause.ps1'
+```
+
+## Expected terminal behavior
+
+The user-run launcher closes WorkBuddy, relaunches it with CDP bound to
+`127.0.0.1:9223`, waits for `renderer/index.html`, and injects only the selected
+theme. WorkBuddy contains no theme-selection controls. To change themes, invoke
+this Skill again and run the newly generated terminal command.
 
 ## Guardrails
 
-- Never replace, edit, or take ownership of `WorkBuddy.app`, `app.asar`, or the
-  Windows install directory. This tool only injects into the live renderer.
-- CDP binds to loopback `127.0.0.1` only. Tell the user not to run untrusted
-  local software while a skin is active (Chromium CDP has no same-user auth).
-- Injection lives for the renderer's lifetime. After a **manual** WorkBuddy
-  restart the skin disappears by design — re-run `apply` to bring it back.
-- Do not import README/preview screenshots or images with baked-in UI as a
-  theme background; use clean wallpapers / character art.
+- Never edit `WorkBuddy.app`, `WorkBuddy.exe`, `app.asar`, the official install
+  directory, or code signing.
+- Never execute the final apply/pause command from WorkBuddy's in-app Agent.
+- The Agent may run `src/terminal-handoff.mjs`; it only copies the final command
+  and opens an external terminal.
+- Never inject selection UI, buttons, menus, or file inputs into WorkBuddy.
+- Use only clean wallpapers or character art for custom themes.
+- Remind the user not to run untrusted local software while CDP is active
+  because the local debugging endpoint has no same-user authentication.
 
-## Checks (sanity before reporting done)
+## Safe Agent commands
+
+These do not close WorkBuddy and may be run by the Agent. The handoff command
+only opens the external terminal and updates the clipboard:
 
 ```bash
-node src/cli.mjs doctor   # platform, app path, CDP port, renderer hint
-node src/cli.mjs status   # injection state
-node --check src/cli.mjs  # syntax
+node src/cli.mjs list
+node src/cli.mjs prepare --theme THEME_ID
+node src/cli.mjs doctor
+node src/cli.mjs status
+node src/terminal-handoff.mjs --action apply --theme THEME_ID
+node --check src/cli.mjs
 ```
-
-`doctor` should report the correct platform, a found WorkBuddy app, and the
-renderer hint `renderer/index.html`.
 
 ## Resources
 
-- `src/cli.mjs` — entry point: `list` / `create` / `apply` / `status` / `pause` / `doctor`.
-- `src/cdp-client.mjs` — CDP connection + renderer discovery.
-- `src/skin-css.mjs` — `--cb-*` variable overrides + background + container transparency.
-- `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native).
-- `src/injector.mjs` — idempotent CSS+menu injection and removal.
-- `src/constants.mjs`, `src/theme-schema.mjs`, `src/theme-store.mjs` — config & theme model.
-- `scripts/apply.command` / `pause.command` — macOS launchers.
-- `scripts/apply.ps1` / `pause.ps1` / `find-workbuddy.ps1` — Windows launchers.
-- `themes/` — 10 built-in theme folders (`theme.json` + `hero.webp`).
-- `README.md` — full human-readable documentation.
-
-## One-line summary for the user
-
-> "I cloned workbuddy-skin-studio, restarted WorkBuddy in debug mode, and injected
-> the theme. Use the 🎨 button (top-right) to switch or revert. Re-run apply if
-> you restart WorkBuddy manually."
+- `src/cli.mjs` — list, create, apply, pause, status, and doctor commands.
+- `src/injector.mjs` — selected-theme-only CSS injection and removal.
+- `src/skin-css.mjs` — WorkBuddy CSS variable and background overrides.
+- `src/theme-store.mjs` — built-in and user-created theme storage.
+- `src/theme-schema.mjs` — validate manifests and securely cache release assets.
+- `src/terminal-handoff.mjs` — safely copy the command and open the terminal.
+- `scripts/apply.command` / `pause.command` — user-run macOS launchers.
+- `scripts/apply.ps1` / `pause.ps1` — user-run Windows launchers.
+- `themes/` — eight lightweight manifests; images live in GitHub Release assets.

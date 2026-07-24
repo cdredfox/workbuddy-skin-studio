@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "ocean-friends",
+  "name": "碧海伙伴",
+  "hero": "hero.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/ocean-friends.webp",
+  "heroSha256": "b6462a1925d7f694fa39728507623de14a82458edcd0241222775b6680f0b701",
+  "heroBytes": 234618,
+  "colors": {
+    "accent": "#2F86D7",
+    "secondary": "#8FC43B",
+    "surface": "#F2F9FD",
+    "text": "#1D4262"
+  },
+  "copy": null
+}

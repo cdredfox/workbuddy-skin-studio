@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "sunny-orchard",
+  "name": "晴空果园",
+  "hero": "hero.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/sunny-orchard.webp",
+  "heroSha256": "7a0d03d4f087a9c5146c495983262bec0dd9139d18cdbc635337ada6514ebae4",
+  "heroBytes": 136796,
+  "colors": {
+    "accent": "#32A9DF",
+    "secondary": "#8EBB34",
+    "surface": "#F4FAF2",
+    "text": "#244B52"
+  },
+  "copy": null
+}

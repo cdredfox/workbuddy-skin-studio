@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "inkblade-surge",
+  "name": "墨锋破浪",
+  "hero": "hero.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/inkblade-surge.webp",
+  "heroSha256": "8d1d281aad126dcf016b51ff9b139e70219c6f2c123ae423661330ce519e45af",
+  "heroBytes": 212008,
+  "colors": {
+    "accent": "#6CA8C4",
+    "secondary": "#C39A4F",
+    "surface": "#171817",
+    "text": "#E9E1D0"
+  },
+  "copy": null
+}

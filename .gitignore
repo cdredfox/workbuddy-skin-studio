@@ -2,3 +2,5 @@
 node_modules/
 *.log
 /tmp/
+/docs/images/
+/themes/*/hero.*

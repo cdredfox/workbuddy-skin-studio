@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  WorkBuddy Skin Studio - Windows apply
+  workbuddy-skin - Windows apply
 .DESCRIPTION
   以 CDP 调试模式重启 WorkBuddy 并应用当前主题
 .PARAMETER Port
@@ -8,10 +8,10 @@
 .PARAMETER WorkBuddyExe
   显式指定 WorkBuddy.exe 路径（覆盖自动探测）
 .PARAMETER Theme
-  指定主题 id（默认用 miku-light）
+  指定主题 id（默认用 sunny-orchard）
 .EXAMPLE
   .\apply.ps1
-  .\apply.ps1 -Theme genshin-night
+  .\apply.ps1 -Theme celestial-dancer
   .\apply.ps1 -WorkBuddyExe "D:\apps\WorkBuddy\WorkBuddy.exe"
 #>
 [CmdletBinding()]

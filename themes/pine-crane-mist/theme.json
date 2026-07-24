@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "pine-crane-mist",
+  "name": "松鹤烟岚",
+  "hero": "hero.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/pine-crane-mist.webp",
+  "heroSha256": "afc1b5eae4cf46f5bdbe0a4d8afcd1e3666f6aa63b92f269f2426b0dc83d45b6",
+  "heroBytes": 167106,
+  "colors": {
+    "accent": "#709A96",
+    "secondary": "#B29A63",
+    "surface": "#F7F2E8",
+    "text": "#3E4D49"
+  },
+  "copy": null
+}
