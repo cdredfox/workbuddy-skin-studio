@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  WorkBuddy Skin Studio - 探测 WorkBuddy.exe 和 node 路径
+  workbuddy-skin - 探测 WorkBuddy.exe 和 node 路径
 .DESCRIPTION
   打印自动探测到的 WorkBuddy.exe 和 node 路径，用于排查 apply.ps1 找不到应用的问题
 #>
@@ -43,7 +43,7 @@ function Find-Node {
 
 $exe = Find-WorkBuddyExe
 $node = Find-Node
-Write-Host "=== WorkBuddy Skin Studio 探测结果 ==="
+Write-Host "=== workbuddy-skin 探测结果 ==="
 Write-Host "WorkBuddy.exe: $(if ($exe) { $exe } else { '未找到' })"
 Write-Host "node:          $(if ($node) { $node } else { '未找到' })"
 if (-not $exe) {

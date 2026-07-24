@@ -1,7 +1,7 @@
 interface:
-  display_name: "WorkBuddy Skin Studio"
+  display_name: "workbuddy-skin"
   short_description: "选择主题后自动打开终端并复制换肤命令"
-  default_prompt: "Use $workbuddy-skin-studio to show me the theme choices, wait for my selection, then open my terminal and copy the command for me."
+  default_prompt: "Use $workbuddy-skin to show me the theme choices, wait for my selection, then open my terminal and copy the command for me."
 
 policy:
   allow_implicit_invocation: true

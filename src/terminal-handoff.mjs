@@ -101,7 +101,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
     const result = runTerminalHandoff(process.argv.slice(2));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
-    process.stderr.write(`WorkBuddy Skin Studio：${error.message}\n`);
+    process.stderr.write(`workbuddy-skin：${error.message}\n`);
     process.exitCode = 1;
   }
 }

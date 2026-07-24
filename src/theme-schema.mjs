@@ -19,7 +19,7 @@ const HEX_COLOR = /^#[0-9A-F]{6}$/i;
 const SHA256 = /^[0-9a-f]{64}$/;
 const THEME_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_REMOTE_HERO_BYTES = 5 * 1024 * 1024;
-const RELEASE_PATH = /^\/[^/]+\/workbuddy-skin-studio\/releases\/download\/[^/]+\/[^/]+$/;
+const RELEASE_PATH = /^\/[^/]+\/workbuddy-skin\/releases\/download\/[^/]+\/[^/]+$/;
 const DEFAULT_COLORS = {
   accent: "#4BC2E0",
   secondary: "#AD7ED5",
@@ -79,7 +79,7 @@ function normalizeRemoteHero(input) {
     url.search ||
     url.hash
   ) {
-    throw new Error("heroUrl must be an immutable workbuddy-skin-studio GitHub Release URL");
+    throw new Error("heroUrl must be an immutable workbuddy-skin GitHub Release URL");
   }
   if (typeof input.heroSha256 !== "string" || !SHA256.test(input.heroSha256)) {
     throw new Error("heroSha256 must be a lowercase SHA-256 digest");

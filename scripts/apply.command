@@ -1,5 +1,5 @@
 #!/bin/bash
-# WorkBuddy Skin Studio — 以 CDP 调试模式重启 WorkBuddy 并应用当前主题
+# workbuddy-skin — 以 CDP 调试模式重启 WorkBuddy 并应用当前主题
 set -e
 unset ELECTRON_RUN_AS_NODE
 cd "$(dirname "$0")/.."

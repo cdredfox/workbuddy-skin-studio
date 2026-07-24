@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  WorkBuddy Skin Studio - Windows pause
+  workbuddy-skin - Windows pause
 .DESCRIPTION
   暂停皮肤，恢复原生界面（不重启 WorkBuddy）
 .PARAMETER Port

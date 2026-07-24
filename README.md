@@ -1,4 +1,4 @@
-# WorkBuddy Skin Studio · WorkBuddy 换肤工作室
+# workbuddy-skin · WorkBuddy 换肤
 
 **给 WorkBuddy 桌面端换一张会呼吸的脸。**
 
@@ -10,11 +10,11 @@
 
 ## 效果预览
 
-![深色主题效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-dark.webp)
+![深色主题效果](https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/readme-preview-dark.webp)
 
-![星河飞天效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-celestial.webp)
+![星河飞天效果](https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/readme-preview-celestial.webp)
 
-![浅色主题效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-light.webp)
+![浅色主题效果](https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/readme-preview-light.webp)
 
 ## 这是什么
 
@@ -51,14 +51,14 @@ AI 会读取 [`SKILL.md`](SKILL.md)，先展示 8 个预设、“上传自定义
 
 ```bash
 # 在系统“终端”中运行：
-cd '/path/to/workbuddy-skin-studio' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'sunny-orchard'
+cd '/path/to/workbuddy-skin' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'sunny-orchard'
 ```
 
 ### Windows
 
 ```powershell
 # 在外部 PowerShell 中运行
-Set-Location -LiteralPath 'C:\path\to\workbuddy-skin-studio'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\apply.ps1' -Theme 'sunny-orchard'
+Set-Location -LiteralPath 'C:\path\to\workbuddy-skin'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\apply.ps1' -Theme 'sunny-orchard'
 
 # 若找不到 WorkBuddy.exe，先跑排查脚本：
 .\scripts\find-workbuddy.ps1
@@ -104,7 +104,7 @@ env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'my-skin
   "id": "my-skin",
   "name": "My Skin",
   "hero": "hero.webp",
-  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/my-skin.webp",
+  "heroUrl": "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/my-skin.webp",
   "heroSha256": "64位小写十六进制摘要",
   "heroBytes": 123456,
   "colors": {

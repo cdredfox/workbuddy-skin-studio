@@ -16,7 +16,7 @@ function manifest(overrides = {}) {
     id: "remote-test",
     name: "Remote Test",
     hero: "hero.webp",
-    heroUrl: "https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/remote-test.webp",
+    heroUrl: "https://github.com/PaPaPiu/workbuddy-skin/releases/download/themes-v1.0.0/remote-test.webp",
     heroSha256: digest,
     heroBytes: hero.length,
     colors: {

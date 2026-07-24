@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const PRODUCT_ID = "workbuddy-skin-studio";
-export const PRODUCT_NAME = "WorkBuddy Skin Studio";
+export const PRODUCT_ID = "workbuddy-skin";
+export const PRODUCT_NAME = "workbuddy-skin";
 export const STATE_SCHEMA_VERSION = 1;
 export const THEME_SCHEMA_VERSION = 1;
 export const DEFAULT_THEME_ID = "sunny-orchard";

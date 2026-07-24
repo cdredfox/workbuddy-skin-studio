@@ -1,10 +1,10 @@
 ---
-name: workbuddy-skin-studio
+name: workbuddy-skin
 description: >-
   Prepare and apply reversible themes/skins for the WorkBuddy desktop app
   through local Chromium DevTools Protocol injection. Use when the user wants
   to install, apply, change, upload, pause, or inspect a WorkBuddy theme/skin;
-  references the workbuddy-skin-studio GitHub project; or says phrases such as
+  references the workbuddy-skin GitHub project; or says phrases such as
   "帮我换 WorkBuddy 主题/皮肤". Present theme choices before applying, wait for
   the user's selection, download only that selected preset from a verified
   GitHub Release into the local cache, then open the external system terminal
@@ -13,7 +13,7 @@ description: >-
   official install.
 ---
 
-# WorkBuddy Skin Studio
+# workbuddy-skin
 
 Apply one selected theme through local CDP injection. Do not inject an in-app
 theme button, menu, or file picker.
@@ -89,13 +89,13 @@ platform-specific command below and ask the user to open a terminal manually.
 Escape single quotes in paths before constructing the command:
 
 ```bash
-cd '/absolute/path/to/workbuddy-skin-studio' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'sunny-orchard'
+cd '/absolute/path/to/workbuddy-skin' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/apply.command' --theme 'sunny-orchard'
 ```
 
 For `恢复原生界面`, give:
 
 ```bash
-cd '/absolute/path/to/workbuddy-skin-studio' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/pause.command'
+cd '/absolute/path/to/workbuddy-skin' && env -u ELECTRON_RUN_AS_NODE /bin/bash './scripts/pause.command'
 ```
 
 Always invoke macOS `.command` files through `/bin/bash`. Skill installation
@@ -109,13 +109,13 @@ Give one PowerShell command. Use `-ExecutionPolicy Bypass` only for this child
 process; never change the user's global execution policy:
 
 ```powershell
-Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin-studio'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\apply.ps1' -Theme 'sunny-orchard'
+Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\apply.ps1' -Theme 'sunny-orchard'
 ```
 
 For `恢复原生界面`, give:
 
 ```powershell
-Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin-studio'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\pause.ps1'
+Set-Location -LiteralPath 'C:\absolute\path\to\workbuddy-skin'; powershell -NoProfile -ExecutionPolicy Bypass -File '.\scripts\pause.ps1'
 ```
 
 ## Expected terminal behavior
