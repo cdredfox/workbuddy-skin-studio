@@ -10,10 +10,11 @@
 
 ## 效果预览
 
-![晴空果园](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/sunny-orchard.webp)
+![深色主题效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-dark.webp)
 
-![星河飞天](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/celestial-dancer.webp)
+![星河飞天效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-celestial.webp)
 
+![浅色主题效果](https://github.com/PaPaPiu/workbuddy-skin-studio/releases/download/themes-v1.0.0/readme-preview-light.webp)
 
 ## 这是什么
 
