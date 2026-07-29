@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - 探测 WorkBuddy.exe 和 node 路径
 .DESCRIPTION
@@ -13,7 +13,7 @@ function Find-WorkBuddyExe {
     (Join-Path $env:LOCALAPPDATA 'Programs\workbuddy\WorkBuddy.exe'),
     (Join-Path $env:ProgramFiles 'WorkBuddy\WorkBuddy.exe')
   )
-  if ($env:ProgramFiles(x86)) { $candidates += (Join-Path $env:ProgramFiles(x86) 'WorkBuddy\WorkBuddy.exe') }
+  if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'WorkBuddy\WorkBuddy.exe') }
   foreach ($c in $candidates) { if (Test-Path -LiteralPath $c) { return $c } }
   try {
     $keys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
