@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - Windows pause
 .DESCRIPTION

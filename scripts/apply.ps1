@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - Windows apply
 .DESCRIPTION
@@ -31,7 +31,7 @@ function Find-WorkBuddyExe {
     (Join-Path $env:LOCALAPPDATA 'Programs\workbuddy\WorkBuddy.exe'),
     (Join-Path $env:ProgramFiles 'WorkBuddy\WorkBuddy.exe')
   )
-  if ($env:ProgramFiles(x86)) { $candidates += (Join-Path $env:ProgramFiles(x86) 'WorkBuddy\WorkBuddy.exe') }
+  if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'WorkBuddy\WorkBuddy.exe') }
   foreach ($c in $candidates) { if (Test-Path -LiteralPath $c) { return $c } }
   # 注册表 Uninstall 项
   try {
