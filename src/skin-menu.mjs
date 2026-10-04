@@ -106,14 +106,16 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   };
   // 合帧调度：body 子树 MutationObserver 在流式输出时每个 DOM 变更任务都会回调，
   // reposition 读 getBoundingClientRect 会强制同步布局；按 rAF 合并到每帧最多一次，
-  // 且读布局落在浏览器本就要做布局的帧内，不再在每次变更后额外触发一次 reflow
+  // 且读布局落在浏览器本就要做布局的帧内，不再在每次变更后额外触发一次 reflow。
+  // 定位按钮的显隐更新挂同一 observer（scheduleNavUpdate 在下方声明，回调只可能在
+  // 脚本同步执行完之后触发，无 TDZ 问题），不另开 observer 避免流式输出双倍回调
   let repositionQueued = false;
   const scheduleReposition = () => {
     if (repositionQueued) return;
     repositionQueued = true;
     requestAnimationFrame(() => { repositionQueued = false; reposition(); });
   };
-  const layoutObserver = new MutationObserver(scheduleReposition);
+  const layoutObserver = new MutationObserver(() => { scheduleReposition(); scheduleNavUpdate(); });
   layoutObserver.observe(document.body, { childList: true, subtree: true });
   // 仍挂到 window：回退到旧版本注入时，旧脚本据此断开本轮观察者
   window.__workbuddySkinLayoutObserver = layoutObserver;
@@ -784,6 +786,161 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   };
   document.addEventListener("mousedown", onOutsideMouseDown, true);
 
+  // ---- 右侧定位按钮：回到顶部 / 上一个提问 / 下一个提问 / 回到底部 ----
+  // 参考 .workbuddy-themes 运行时的滚动按钮实现移植：WorkBuddy 未暴露稳定的会话
+  // DOM 锚点，滚动容器与提问锚点都走启发式探测。容器按「可滚动 + 宽度≥40% 视口 +
+  // 高度≥200 + 面积最大」挑选并缓存 500ms；提问锚点优先 data-role/class 启发式
+  // （剔除嵌套命中、排除 assistant/bot 类名），兜底取容器最高子节点的直接子项
+  const navRoot = document.createElement("div");
+  navRoot.style.cssText = "position:fixed;right:14px;bottom:96px;z-index:2147483000;display:none;flex-direction:column;align-items:center;gap:8px;user-select:none;-webkit-app-region:no-drag;app-region:no-drag;";
+
+  let scrollBox = null;
+  let scrollBoxCachedAt = 0;
+  const findScrollBox = () => {
+    const now = Date.now();
+    // 缓存有效期内且节点仍在文档中直接复用；断开/过期才重新全量扫描
+    if (scrollBox && scrollBox.isConnected && now - scrollBoxCachedAt < 500) return scrollBox;
+    scrollBoxCachedAt = now;
+    scrollBox = null;
+    const preferred = document.querySelector(".messages-container");
+    if (preferred && preferred.scrollHeight > preferred.clientHeight + 20) {
+      scrollBox = preferred;
+      return scrollBox;
+    }
+    let best = null;
+    let bestArea = 0;
+    const viewportWidth = window.innerWidth || 1200;
+    for (const el of document.querySelectorAll("*")) {
+      if (el.scrollHeight <= el.clientHeight + 20) continue;
+      if (!/(auto|scroll|overlay)/.test(getComputedStyle(el).overflowY)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 0.4 * viewportWidth || rect.height < 200) continue;
+      const area = rect.width * rect.height;
+      if (area > bestArea) { bestArea = area; best = el; }
+    }
+    if (best) scrollBox = best;
+    return scrollBox;
+  };
+
+  const USER_ANCHOR_SELECTOR = "[data-role=user],[data-author=user],[data-message-role=user],[data-from=user],[class*=user-message],[class*=message-user],[class*=message--user],[class*=is-user],[class*=--user],[class*=_user],[class*=human],[class*=-self],[class*=sender]";
+  const findAnchors = (box) => {
+    let anchors = Array.from(box.querySelectorAll(USER_ANCHOR_SELECTOR))
+      .filter((el) => !/assistant|agent|\bai\b|bot|robot|menu|avatar|trigger|reply|answer|response/i.test(el.getAttribute("class") || ""));
+    // 只留最外层命中：嵌套命中时丢弃被包含者，避免定位到同一条提问的内部碎片
+    anchors = anchors.filter((el) => !anchors.some((other) => other !== el && other.contains(el)));
+    anchors = anchors.filter((el) => el.getBoundingClientRect().height >= 8);
+    if (anchors.length === 0) {
+      // 兜底：容器最高子节点的直接子项（>=2 条才有定位意义），再退到通用消息类
+      let tallest = null;
+      let maxHeight = 0;
+      for (const child of box.children) {
+        if (child.scrollHeight > maxHeight) { maxHeight = child.scrollHeight; tallest = child; }
+      }
+      let candidates = tallest && tallest.children.length >= 2 ? Array.from(tallest.children) : [];
+      if (candidates.length < 2) {
+        const generic = box.querySelectorAll("[class*=message],[class*=msg],[class*=chat-item]");
+        if (generic.length >= 2) candidates = Array.from(generic);
+      }
+      anchors = candidates.filter((el) => el.getBoundingClientRect().height >= 8);
+    }
+    return anchors.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+  };
+
+  // 元素在滚动容器坐标系里的纵向偏移（含当前滚动量）
+  const offsetInBox = (box, el) => Math.round(el.getBoundingClientRect().top - (box.getBoundingClientRect().top - box.scrollTop));
+
+  // rAF 三次缓出 420ms 平滑滚动；用户滚轮/触摸介入立即让出控制权（捕获阶段取消动画）
+  let navAnim = 0;
+  const cancelNavAnim = () => {
+    if (!navAnim) return;
+    cancelAnimationFrame(navAnim);
+    navAnim = 0;
+  };
+  const smoothScrollTo = (box, targetTop) => {
+    cancelNavAnim();
+    const startTop = box.scrollTop;
+    const startAt = performance.now();
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    const step = () => {
+      navAnim = 0;
+      if (!box.isConnected) return;
+      // 目标每帧重新夹取：流式输出使 scrollHeight 增长时，回到底部能跟随到底
+      const max = Math.max(0, box.scrollHeight - box.clientHeight);
+      const target = Math.max(0, Math.min(targetTop, max));
+      const progress = Math.min(1, (performance.now() - startAt) / 420);
+      box.scrollTop = startTop + (target - startTop) * easeOut(progress);
+      if (progress < 1) navAnim = requestAnimationFrame(step);
+      else box.scrollTop = target;
+    };
+    navAnim = requestAnimationFrame(step);
+  };
+
+  const NAV_TOLERANCE = 4;
+  const scrollToEdge = (direction) => {
+    const box = findScrollBox();
+    if (!box) return;
+    const max = Math.max(0, box.scrollHeight - box.clientHeight);
+    smoothScrollTo(box, direction < 0 ? 0 : max);
+  };
+  const scrollToQuestion = (direction) => {
+    const box = findScrollBox();
+    if (!box) return;
+    const anchors = findAnchors(box);
+    const current = box.scrollTop;
+    let target = null;
+    if (direction < 0) {
+      for (let i = anchors.length - 1; i >= 0; i -= 1) {
+        if (offsetInBox(box, anchors[i]) < current - NAV_TOLERANCE) { target = anchors[i]; break; }
+      }
+    } else {
+      for (const el of anchors) {
+        if (offsetInBox(box, el) > current + NAV_TOLERANCE) { target = el; break; }
+      }
+    }
+    if (target) smoothScrollTo(box, offsetInBox(box, target));
+  };
+
+  const navButton = (label, svgBody, onClick) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.style.cssText = "width:32px;height:32px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.85);backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;color:#17344f;";
+    // svgBody 为下方静态字面量，无用户输入，innerHTML 安全
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + svgBody + "</svg>";
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      try { onClick(); } catch (error) { logError("定位按钮点击处理失败", label, error); }
+    });
+    return btn;
+  };
+
+  navRoot.append(
+    navButton("\u56de\u5230\u9876\u90e8", '<line x1="6" y1="4.5" x2="18" y2="4.5"></line><polyline points="7 12 12 7 17 12"></polyline><line x1="12" y1="7" x2="12" y2="19"></line>', () => scrollToEdge(-1)),
+    navButton("\u4e0a\u4e00\u4e2a\u63d0\u95ee", '<polyline points="6 14 12 8 18 14"></polyline>', () => scrollToQuestion(-1)),
+    navButton("\u4e0b\u4e00\u4e2a\u63d0\u95ee", '<polyline points="6 10 12 16 18 10"></polyline>', () => scrollToQuestion(1)),
+    navButton("\u56de\u5230\u5e95\u90e8", '<line x1="12" y1="5" x2="12" y2="17"></line><polyline points="7 12 12 17 17 12"></polyline><line x1="6" y1="19.5" x2="18" y2="19.5"></line>', () => scrollToEdge(1)),
+  );
+  document.body.appendChild(navRoot);
+
+  // 显隐：容器可滚才显示；scroll 捕获监听 + layoutObserver（见上）双路驱动，均按 rAF 合帧
+  let navUpdateQueued = false;
+  const updateNavVisibility = () => {
+    const box = findScrollBox();
+    const show = !!box && box.scrollHeight > box.clientHeight + 20;
+    navRoot.style.display = show ? "flex" : "none";
+  };
+  const scheduleNavUpdate = () => {
+    if (navUpdateQueued) return;
+    navUpdateQueued = true;
+    requestAnimationFrame(() => { navUpdateQueued = false; updateNavVisibility(); });
+  };
+  document.addEventListener("scroll", scheduleNavUpdate, true);
+  // 用户滚轮/触摸滚动时取消进行中的定位动画，避免与动画抢滚动条
+  document.addEventListener("wheel", cancelNavAnim, true);
+  document.addEventListener("touchstart", cancelNavAnim, true);
+  scheduleNavUpdate();
+
   // 本轮注入的完整拆除：重复注入（脚本开头）与 pause（removeSkin）都会调用。
   // 只拆运行时资源，不动 <style>（重复注入复用同一节点、pause 由 removeSkin 自行移除）；
   // 解除明暗钉住后类与属性的所有权还给应用
@@ -794,9 +951,14 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     layoutObserver.disconnect();
     modeObserver.disconnect();
     pinnedDark = null;
+    cancelNavAnim();
     window.removeEventListener("resize", scheduleReposition);
     window.removeEventListener("storage", onStorage);
     document.removeEventListener("mousedown", onOutsideMouseDown, true);
+    document.removeEventListener("scroll", scheduleNavUpdate, true);
+    document.removeEventListener("wheel", cancelNavAnim, true);
+    document.removeEventListener("touchstart", cancelNavAnim, true);
+    navRoot.remove();
     releaseVideo();
     releaseHeroBlob();
     for (const url of videoUrlCache.values()) URL.revokeObjectURL(url);
@@ -821,6 +983,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   const reviveObserver = new MutationObserver(() => {
     if (!style.isConnected) document.head.appendChild(style);
     if (!root.isConnected) document.body.appendChild(root);
+    if (!navRoot.isConnected) document.body.appendChild(navRoot);
   });
   reviveObserver.observe(document.head, { childList: true });
   reviveObserver.observe(document.body, { childList: true });

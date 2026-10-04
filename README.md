@@ -100,6 +100,14 @@ node src/cli.mjs apply --theme genshin-night
 - 自定义主题最多 10 个槽位，每个独立持久化（元数据在 localStorage，视频文件在 IndexedDB），行尾 × 单独删除
 - 「原生界面」恢复官方外观
 
+## 右侧定位按钮
+
+应用皮肤后，会话区域可滚动时右下角出现四个定位按钮：**回到顶部 / 上一个提问 / 下一个提问 / 回到底部**（悬停显示名称）：
+
+- 滚动容器与提问锚点均为启发式探测（优先 `.messages-container`，回退「可滚动 + 占宽≥40% + 面积最大」；提问锚点优先 `data-role=user` 等选择器，回退消息列表直接子项），不依赖特定 DOM 版本
+- 平滑滚动为 rAF 三次缓出（420ms），目标每帧按最新 `scrollHeight` 夹取——流式输出时「回到底部」能跟随增长到底；滚轮/触摸介入立即取消动画让出控制权
+- 显隐按 rAF 合帧驱动（scroll 捕获监听 + 布局变更观察），容器不可滚动时自动隐藏
+
 ## 自定义主题
 
 用任意图片创建主题：
@@ -159,7 +167,7 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 
 - `test/theme-schema.test.mjs` — 主题清单校验：`poster` 规则（视频 hero 必填、图片 hero 禁填、必须是主题目录内的图片相对路径）与 `loadTheme` 的 realpath 逃逸防护（junction / symlink）、目录内合法符号链接、清单 JSON 报错带路径
 - `test/injector.test.mjs` — 视频预置链路：4MB 分块切分与暂存清理、写入字节数校验、`Uint8Array.fromBase64` 快路径 + `atob` 回退 + 主线程让出、按尺寸判重跳过、单个渲染进程失败降级为警告、本地文件缺失降级；`applySkin` 每个渲染进程只开一条会话（视频预置失败时换新连接继续注入）；`removeSkin` 先调菜单 teardown
-- `test/skin-menu.test.mjs` — 🎨 菜单注入脚本：生成脚本可被 JS 引擎编译、切换 / 上传 / 恢复原生各路径的异常兜底与错误日志、大图解码快路径、IndexedDB 阻塞与中止处理、重复注入 / 暂停时的 teardown（断观察者、解除明暗钉住、移除全局监听）、布局校准按 rAF 合帧、自定义主题列表缓存、自愈重挂（菜单/样式被框架移除后自动重挂，teardown 先断观察者再移除）
+- `test/skin-menu.test.mjs` — 🎨 菜单注入脚本：生成脚本可被 JS 引擎编译、切换 / 上传 / 恢复原生各路径的异常兜底与错误日志、大图解码快路径、IndexedDB 阻塞与中止处理、重复注入 / 暂停时的 teardown（断观察者、解除明暗钉住、移除全局监听）、布局校准按 rAF 合帧、自定义主题列表缓存、自愈重挂（菜单/样式/定位按钮被框架移除后自动重挂，teardown 先断观察者再移除）、右侧定位按钮（四键齐全、容器/锚点启发式与兜底、平滑滚动、滚轮取消动画、显隐合帧、teardown 拆除）
 - `test/theme-store.test.mjs` — 主题列表：多目录同 id 去重（内置优先）、缺 `name` 不再崩、跳过坏清单与 `.tmp-` 残留目录；`create` 名称校验
 - `test/cdp-client.test.mjs` — CDP 会话：默认不 enable 任何域、`enableDomains` 显式开启与参数校验
 - `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`watch` 命令接线；`doctor` 的 Node 版本检查与状态展示

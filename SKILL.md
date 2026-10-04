@@ -183,7 +183,8 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 - `src/cdp-client.mjs` — CDP connection + renderer discovery.
 - `src/skin-css.mjs` — `--cb-*` variable overrides + background + container transparency.
 - `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native) + self-heal
-  re-attach observer.
+  re-attach observer + right-side nav buttons (top / prev question / next question /
+  bottom, heuristic scroll-box and user-anchor detection, rAF smooth scroll).
 - `src/injector.mjs` — idempotent CSS+menu injection and removal (re-inject / pause
   call the menu's `window.__workbuddySkinTeardown` first).
 - `src/watcher.mjs` — watch loop: re-inject after page reload, relaunch+reapply after
