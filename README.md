@@ -86,6 +86,8 @@ node src/cli.mjs apply --theme genshin-night
 ```
 
 > 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重跑一次 apply 即可回来——不带主题参数时会自动恢复你上次在 🎨 菜单里选的皮肤（含自定义皮肤）。
+>
+> 不想每次手动重跑？用**看护模式**：`node src/cli.mjs watch`（或 Windows `.\scripts\apply.ps1 -Watch`）。它会常驻探测：WorkBuddy 以非调试模式重启时自动拉起并恢复皮肤；界面整页重载（皮肤掉了但调试端口还在）时直接重注；你主动退出 WorkBuddy 时它只待命，绝不擅自拉起。Ctrl+C 退出看护。
 
 ## 主题切换菜单
 
@@ -138,9 +140,10 @@ node src/cli.mjs apply --theme my-skin
 node src/cli.mjs list                              # 列出所有主题
 node src/cli.mjs create --image PATH --name NAME   # 从图片创建主题
 node src/cli.mjs apply [--theme ID] [--port 9223]  # 应用主题
+node src/cli.mjs watch [--port 9223] [--interval 3000]  # 常驻看护：重启/重载后自动恢复皮肤
 node src/cli.mjs status                            # 查询注入状态
 node src/cli.mjs pause                             # 恢复原生（别名：restore）
-node src/cli.mjs doctor                            # 检查环境（app 路径、端口、平台）
+node src/cli.mjs doctor                            # 检查环境（app 路径、端口、Node 版本、上次注入回执）
 ```
 
 ## 开发与测试
@@ -156,10 +159,12 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 
 - `test/theme-schema.test.mjs` — 主题清单校验：`poster` 规则（视频 hero 必填、图片 hero 禁填、必须是主题目录内的图片相对路径）与 `loadTheme` 的 realpath 逃逸防护（junction / symlink）、目录内合法符号链接、清单 JSON 报错带路径
 - `test/injector.test.mjs` — 视频预置链路：4MB 分块切分与暂存清理、写入字节数校验、`Uint8Array.fromBase64` 快路径 + `atob` 回退 + 主线程让出、按尺寸判重跳过、单个渲染进程失败降级为警告、本地文件缺失降级；`applySkin` 每个渲染进程只开一条会话（视频预置失败时换新连接继续注入）；`removeSkin` 先调菜单 teardown
-- `test/skin-menu.test.mjs` — 🎨 菜单注入脚本：生成脚本可被 JS 引擎编译、切换 / 上传 / 恢复原生各路径的异常兜底与错误日志、大图解码快路径、IndexedDB 阻塞与中止处理、重复注入 / 暂停时的 teardown（断观察者、解除明暗钉住、移除全局监听）、布局校准按 rAF 合帧、自定义主题列表缓存
+- `test/skin-menu.test.mjs` — 🎨 菜单注入脚本：生成脚本可被 JS 引擎编译、切换 / 上传 / 恢复原生各路径的异常兜底与错误日志、大图解码快路径、IndexedDB 阻塞与中止处理、重复注入 / 暂停时的 teardown（断观察者、解除明暗钉住、移除全局监听）、布局校准按 rAF 合帧、自定义主题列表缓存、自愈重挂（菜单/样式被框架移除后自动重挂，teardown 先断观察者再移除）
 - `test/theme-store.test.mjs` — 主题列表：多目录同 id 去重（内置优先）、缺 `name` 不再崩、跳过坏清单与 `.tmp-` 残留目录；`create` 名称校验
 - `test/cdp-client.test.mjs` — CDP 会话：默认不 enable 任何域、`enableDomains` 显式开启与参数校验
-- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、记住的主题失效回退默认
+- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`watch` 命令接线；`doctor` 的 Node 版本检查与状态展示
+- `test/watcher.test.mjs` — 看护循环：页面重载重注、非调试重启拉起+重注、主动退出只待命、启动中不误判、失败退避翻倍（上限 60s）、探测异常落日志继续
+- `test/state-store.test.mjs` — 状态回执：读写往返、浅合并、损坏文件回退 null、原子写入
 
 ## 内置主题
 
@@ -183,10 +188,12 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 
 ## 设计边界
 
-- 这是一个轻量工具。皮肤跟随当前 renderer 存活，WorkBuddy 完整重载界面后重新运行一次 apply 即可
+- 这是一个轻量工具。皮肤跟随当前 renderer 存活，WorkBuddy 完整重载界面后重新运行一次 apply 即可（或用 `watch` 常驻看护自动恢复）
+- 注入的菜单与 `<style>` 具备自愈能力：前端框架整树重建把它们移除后会自动重挂（`MutationObserver` 观察 body/head 直接子节点）
 - CDP 只绑定本机回环地址 `127.0.0.1`，主题运行期间勿跑来路不明的本机程序
 - 重复 apply / 暂停会先拆掉上一轮注入的观察者与监听器（`window.__workbuddySkinTeardown`）；从本次修复之前的版本升级时，旧版残留的观察者无法被拆除，建议升级后重启一次 WorkBuddy
 - 内置视频主题的 MP4 需在注入时预置进渲染进程 IndexedDB；单次预置失败（渲染进程超时 / 内存不足）只记录警告，不阻塞皮肤本身注入，菜单侧对视频数据缺失有兜底提示
+- 每次 apply / pause 会在状态目录落一份回执（`state.json`：时间、主题、成败、错误信息），`doctor` 会一并展示；写入失败不影响换肤本身
 - 不修改官方安装目录与代码签名
 - 深色主题已适配 `data-vscode-theme-kind` 自动切换；点「原生界面」恢复时默认回到 light（若你原生是 dark 需手动切回）
 - 当前版本针对 WorkBuddy 的 `--cb-*` 设计变量系统和 `[data-view-id]` DOM 锚点适配，与 Codex 的 DOM 结构完全不同

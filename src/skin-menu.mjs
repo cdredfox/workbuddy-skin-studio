@@ -68,6 +68,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   // 兼容更早版本注入（无 teardown）：至少杀掉其挂在 window 上的观察者，防止旧菜单复活
   window.__workbuddySkinObserver?.disconnect();
   window.__workbuddySkinLayoutObserver?.disconnect();
+  window.__workbuddySkinReviveObserver?.disconnect();
 
   let style = document.getElementById(data.styleId);
   if (!style) {
@@ -787,6 +788,9 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   // 只拆运行时资源，不动 <style>（重复注入复用同一节点、pause 由 removeSkin 自行移除）；
   // 解除明暗钉住后类与属性的所有权还给应用
   window[${JSON.stringify(TEARDOWN_GLOBAL)}] = () => {
+    // 先断自愈观察者再移除 root：observer 回调是微任务，若不先 disconnect
+    // （同时丢弃已排队的变更记录），下面的 root.remove() 会在 teardown 结束后被重挂回去
+    reviveObserver.disconnect();
     layoutObserver.disconnect();
     modeObserver.disconnect();
     pinnedDark = null;
@@ -800,12 +804,28 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     videoStore.close();
     root.remove();
     if (window.__workbuddySkinLayoutObserver === layoutObserver) delete window.__workbuddySkinLayoutObserver;
+    if (window.__workbuddySkinReviveObserver === reviveObserver) delete window.__workbuddySkinReviveObserver;
     delete window.__workbuddySkin;
     delete window[${JSON.stringify(TEARDOWN_GLOBAL)}];
   };
 
   root.append(button, panel, picker);
   document.body.appendChild(root);
+
+  // 自愈重挂：Slate/React 整树重建（路由切换、流式渲染根替换等）可能把挂在 body
+  // 末尾的菜单根节点或 head 里的 <style> 一并移除，表现为「主题/按钮突然消失」。
+  // 观察 body/head 的直接子节点（两个节点都是直接子节点，无需 subtree——subtree 会
+  // 在流式输出时高频回调），节点脱离 document 即重挂。重挂的是同一批节点，
+  // 闭包状态（rows/panel/选中主题/视频层）全部保留。重挂本身会再触发一次回调，
+  // 但此时 isConnected 已为 true，空转收敛。
+  const reviveObserver = new MutationObserver(() => {
+    if (!style.isConnected) document.head.appendChild(style);
+    if (!root.isConnected) document.body.appendChild(root);
+  });
+  reviveObserver.observe(document.head, { childList: true });
+  reviveObserver.observe(document.body, { childList: true });
+  // 仍挂到 window：回退到旧版本注入时，旧脚本据此断开本轮观察者（同 layoutObserver）
+  window.__workbuddySkinReviveObserver = reviveObserver;
   if (data.activeId === null) clearTheme();
   else setTheme(data.activeId);
 

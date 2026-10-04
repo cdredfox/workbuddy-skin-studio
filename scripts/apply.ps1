@@ -13,12 +13,14 @@
   .\apply.ps1
   .\apply.ps1 -Theme genshin-night
   .\apply.ps1 -WorkBuddyExe "D:\apps\WorkBuddy\WorkBuddy.exe"
+  .\apply.ps1 -Watch   # 应用皮肤后常驻看护：WorkBuddy 重启/页面重载后自动恢复皮肤
 #>
 [CmdletBinding()]
 param(
   [int]$Port = 9223,
   [string]$WorkBuddyExe,
-  [string]$Theme
+  [string]$Theme,
+  [switch]$Watch
 )
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
@@ -73,3 +75,10 @@ $cli = Join-Path $Root 'src/cli.mjs'
 $applyArgs = @('apply', '--port', "$Port")
 if ($Theme) { $applyArgs += @('--theme', $Theme) }
 & $node $cli @applyArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if ($Watch) {
+  Write-Host "进入看护模式（Ctrl+C 退出）：WorkBuddy 重启或页面重载后自动恢复皮肤"
+  & $node $cli watch --port "$Port"
+  exit $LASTEXITCODE
+}

@@ -79,6 +79,31 @@ test("teardown：脚本开头先拆上一轮注入，结尾登记本轮拆除（
   }
 });
 
+test("自愈重挂：菜单根节点 / <style> 被 React 重建移除后自动重挂回 body/head", () => {
+  const script = build();
+  assert.ok(script.includes("if (!style.isConnected) document.head.appendChild(style);"));
+  assert.ok(script.includes("if (!root.isConnected) document.body.appendChild(root);"));
+  // 只观察直接子节点（两个节点都挂在 body/head 末尾），不开 subtree 避免流式输出高频回调
+  assert.ok(script.includes('reviveObserver.observe(document.head, { childList: true })'));
+  assert.ok(script.includes('reviveObserver.observe(document.body, { childList: true })'));
+});
+
+test("自愈重挂：teardown 先断 reviveObserver 再 root.remove()，防止移除被重挂回去", () => {
+  const script = build();
+  const register = script.indexOf('window["__workbuddySkinTeardown"] = () =>');
+  const body = script.slice(register, script.indexOf("};", register));
+  // 带分号匹配语句本体：teardown 注释里也提到了 root.remove()，裸匹配会先命中注释
+  const disconnect = body.indexOf("reviveObserver.disconnect();");
+  const remove = body.indexOf("root.remove();");
+  assert.ok(disconnect > 0 && remove > disconnect);
+  // 挂 window 供旧版本脚本断开（与 layoutObserver 同一套兼容模式），teardown 时清理
+  assert.ok(script.includes("window.__workbuddySkinReviveObserver = reviveObserver"));
+  assert.ok(body.includes("delete window.__workbuddySkinReviveObserver"));
+  // 脚本开头的旧版本兼容拆除也覆盖它
+  const head = script.slice(0, script.indexOf("let style"));
+  assert.ok(head.includes("window.__workbuddySkinReviveObserver?.disconnect()"));
+});
+
 test("reposition：MutationObserver 按 rAF 合帧，不再每次变更都同步读布局", () => {
   const script = build();
   assert.ok(script.includes("new MutationObserver(scheduleReposition)"));

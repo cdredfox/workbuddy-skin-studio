@@ -5,8 +5,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { DEFAULT_CDP_PORT, DEFAULT_THEME_ID, EXPECTED_BUNDLE_ID, RENDERER_URL_HINT, resolveStudioPaths } from "./constants.mjs";
 import { applySkin, removeSkin, skinStatus, readSavedActiveSkin, activateSavedSkin } from "./injector.mjs";
+import { readState, writeState } from "./state-store.mjs";
 import { loadTheme } from "./theme-schema.mjs";
 import { createSingleImageTheme, listThemes } from "./theme-store.mjs";
+import { startWatch } from "./watcher.mjs";
 
 const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -42,8 +44,22 @@ function defaults(overrides) {
     skinStatus,
     readSavedActiveSkin,
     activateSavedSkin,
+    readStateFile: readState,
+    writeStateFile: writeState,
+    startWatch,
     ...overrides,
   };
+}
+
+// 状态回执只作诊断：写入失败（权限/磁盘）绝不允许打断换肤主流程
+function recordState(deps, patch) {
+  return deps.writeStateFile(patch).catch(() => {});
+}
+
+// doctor 环境报告附带的 Node 版本检查（注入脚本用到较新的内置 API，要求 18+）
+function nodeInfo() {
+  const major = Number(process.versions.node.split(".")[0]);
+  return { version: process.version, required: ">=18", ok: Number.isInteger(major) && major >= 18 };
 }
 
 export async function runCli(argv, overrides = {}) {
@@ -54,7 +70,7 @@ export async function runCli(argv, overrides = {}) {
 
   if (command === "help") {
     return {
-      commands: ["list", "create --image PATH --name NAME", "apply [--theme ID] [--port 9223]", "pause (alias: restore)", "status", "doctor"],
+      commands: ["list", "create --image PATH --name NAME", "apply [--theme ID] [--port 9223]", "watch [--port 9223] [--interval 3000]", "pause (alias: restore)", "status", "doctor"],
     };
   }
   if (command === "list") return deps.listThemes({ roots });
@@ -65,6 +81,85 @@ export async function runCli(argv, overrides = {}) {
   }
   if (command === "apply") {
     const port = portFrom(args.port);
+    try {
+      return await applyCommand(deps, roots, args, port);
+    } catch (error) {
+      await recordState(deps, {
+        lastApply: { at: new Date().toISOString(), ok: false, port, themeId: args.theme ?? null, error: error.message },
+      });
+      throw error;
+    }
+  }
+  if (command === "pause" || command === "restore") {
+    const port = portFrom(args.port);
+    const result = await deps.removeSkin({ port });
+    await recordState(deps, { lastPause: { at: new Date().toISOString(), ok: true, port, removed: result.removed } });
+    return result;
+  }
+  if (command === "watch") {
+    const port = portFrom(args.port);
+    const intervalMs = args.interval === undefined ? 3000 : Number(args.interval);
+    if (!Number.isFinite(intervalMs) || intervalMs < 500) {
+      throw new Error("--interval 必须是不小于 500 的毫秒数");
+    }
+    // 常驻看护：WorkBuddy 以非调试模式重启（手动重启/升级）时自动拉起并重注上次皮肤；
+    // renderer 整页重载（注入消失但端口还在）时直接重注。overrides 原样下传，保持依赖注入链完整
+    return deps.startWatch({
+      port,
+      intervalMs,
+      reapply: () => runCli(["apply", "--port", String(port)], overrides),
+    });
+  }
+  if (command === "status") return deps.skinStatus({ port: portFrom(args.port) });
+  if (command === "doctor") {
+    const state = await deps.readStateFile().catch(() => null);
+    const exists = async (path) => access(path).then(() => true, () => false);
+    if (process.platform === "win32") {
+      const candidates = [
+        process.env.WORKBUDDY_EXE,
+        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "workbuddy", "WorkBuddy.exe"),
+        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs", "workbuddy", "WorkBuddy.exe"),
+        process.env.ProgramFiles && join(process.env.ProgramFiles, "WorkBuddy", "WorkBuddy.exe"),
+        process.env["ProgramFiles(x86)"] && join(process.env["ProgramFiles(x86)"], "WorkBuddy", "WorkBuddy.exe"),
+      ].filter(Boolean);
+      let app = null;
+      for (const c of candidates) {
+        if (await exists(c)) { app = c; break; }
+      }
+      return {
+        platform: "win32",
+        app,
+        appFound: !!app,
+        candidates,
+        cdpPort: DEFAULT_CDP_PORT,
+        rendererHint: RENDERER_URL_HINT,
+        installRoot: resolveStudioPaths().installRoot,
+        statePath: resolveStudioPaths().statePath,
+        node: nodeInfo(),
+        state,
+      };
+    }
+    // 非 Windows 按 macOS 布局探测；平台如实上报（Linux 等会显示 appFound:false）
+    const app = "/Applications/WorkBuddy.app";
+    return {
+      platform: process.platform,
+      app,
+      appFound: await exists(app),
+      bundleId: EXPECTED_BUNDLE_ID,
+      cdpPort: DEFAULT_CDP_PORT,
+      rendererHint: RENDERER_URL_HINT,
+      installRoot: resolveStudioPaths().installRoot,
+      statePath: resolveStudioPaths().statePath,
+      node: nodeInfo(),
+      state,
+    };
+  }
+  throw new Error(`未知命令：${command}`);
+}
+
+async function applyCommand(deps, roots, args, port) {
+  // apply 编排独立成函数：watch 模式的 reapply 与 apply 命令共用同一条路径
+  {
     let themeId = args.theme;
     let savedCustomId = null;
     let activeId;
@@ -106,49 +201,19 @@ export async function runCli(argv, overrides = {}) {
       result.themeId = savedCustomId;
       result.restored = true;
     }
+    await recordState(deps, {
+      lastApply: {
+        at: new Date().toISOString(),
+        ok: true,
+        port,
+        themeId: result.themeId,
+        restored: result.restored === true,
+        applied: result.applied,
+        videoWarnings: result.videoWarnings?.length ?? 0,
+      },
+    });
     return result;
   }
-  if (command === "pause" || command === "restore") {
-    return deps.removeSkin({ port: portFrom(args.port) });
-  }
-  if (command === "status") return deps.skinStatus({ port: portFrom(args.port) });
-  if (command === "doctor") {
-    const exists = async (path) => access(path).then(() => true, () => false);
-    if (process.platform === "win32") {
-      const candidates = [
-        process.env.WORKBUDDY_EXE,
-        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "workbuddy", "WorkBuddy.exe"),
-        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs", "workbuddy", "WorkBuddy.exe"),
-        process.env.ProgramFiles && join(process.env.ProgramFiles, "WorkBuddy", "WorkBuddy.exe"),
-        process.env["ProgramFiles(x86)"] && join(process.env["ProgramFiles(x86)"], "WorkBuddy", "WorkBuddy.exe"),
-      ].filter(Boolean);
-      let app = null;
-      for (const c of candidates) {
-        if (await exists(c)) { app = c; break; }
-      }
-      return {
-        platform: "win32",
-        app,
-        appFound: !!app,
-        candidates,
-        cdpPort: DEFAULT_CDP_PORT,
-        rendererHint: RENDERER_URL_HINT,
-        installRoot: resolveStudioPaths().installRoot,
-      };
-    }
-    // 非 Windows 按 macOS 布局探测；平台如实上报（Linux 等会显示 appFound:false）
-    const app = "/Applications/WorkBuddy.app";
-    return {
-      platform: process.platform,
-      app,
-      appFound: await exists(app),
-      bundleId: EXPECTED_BUNDLE_ID,
-      cdpPort: DEFAULT_CDP_PORT,
-      rendererHint: RENDERER_URL_HINT,
-      installRoot: resolveStudioPaths().installRoot,
-    };
-  }
-  throw new Error(`未知命令：${command}`);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
