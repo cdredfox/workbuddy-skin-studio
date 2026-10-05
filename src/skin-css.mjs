@@ -183,5 +183,49 @@ body[data-application-name=workbuddy] {
   text-shadow: 0 0 8px var(--wb-surface), 0 2px 14px var(--wb-surface);
   pointer-events: none;
 }
-`;
+
+/* 首页/空会话主标题：主题色渐变文字（accent→secondary，随主题/自定义取色自适应）。
+   不用 text-shadow 而用 filter:drop-shadow —— 透明填充文字上 text-shadow 会透过字形
+   显影发脏，drop-shadow 按字形 alpha 描光晕，繁忙壁纸上依然可读 */
+.wb-home-header__title,
+.claw-agent-chat-pane .colleague-chat-empty-profile__title {
+  background: linear-gradient(135deg, var(--wb-accent), var(--wb-secondary)) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 750 !important;
+  filter: drop-shadow(0 1px 6px var(--wb-surface));
+}
+
+/* 左上角 WorkBuddy 字标变身（参照 TDP 的双色 SVG 字标）：硬切渐变实现双色——
+   "Work" 用文本色、"Buddy" 用 accent（4/9 字符 ≈ 44% 处硬切）。全 var() 引用，
+   自定义皮肤随上传图片取色自动适配；无需 SVG 资源，避免哨兵色值在 data URL
+   编码后替换不到的坑 */
+.conversation-list-logo .logo-workbuddy-title {
+  background: linear-gradient(90deg, var(--wb-text) 0 44%, var(--wb-accent) 44% 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 800 !important;
+  letter-spacing: -.4px;
+}
+${theme.copy?.tagline ? `
+/* 主题标语（仅 copy.tagline 配置时输出，自定义皮肤 copy 为 null 不注入文案） */
+.wb-home-header::after {
+  content: ${copy(theme.copy.tagline)} !important;
+  display: block !important;
+  width: fit-content;
+  margin: 10px auto 2px;
+  background: linear-gradient(90deg, var(--wb-accent), var(--wb-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font: 600 15px/1.5 ui-rounded, system-ui;
+  letter-spacing: .3px;
+  filter: drop-shadow(0 1px 4px var(--wb-surface));
+}
+` : ""}`;
 }

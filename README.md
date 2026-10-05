@@ -22,11 +22,11 @@
 一个给 WorkBuddy 桌面端换肤的工具。通过本机回环 CDP 把主题实时注入 WorkBuddy 界面，不修改 `app.asar`，不破坏应用签名，也不需要为每次 WorkBuddy 更新重新适配。
 
 - **一键切换**：应用皮肤后 WorkBuddy 右上角出现 🎨 菜单，所有已装主题和原生界面即点即换，零等待
-- **自定义上传**：菜单里选「＋ 自定义皮肤」直接上传本地图片或 MP4 视频，自动按画面风格取色（主色、辅色、面板底色、文字色），即点即换；明暗默认按**主色亮度**自动判定，点行尾「自/浅/深」按钮可强制浅色或深色；最多 10 个自定义槽位各自保留，行尾 × 单独删除
+- **自定义上传**：菜单里选「＋ 自定义主题」直接上传本地图片或 MP4 视频，自动按画面风格取色（主色、辅色、面板底色、文字色），即点即换；明暗默认按**主色亮度**自动判定，点行尾「自/浅/深」按钮可强制浅色或深色；最多 10 个自定义槽位各自保留，行尾 × 单独删除
 - **一张图片就是一个主题**：任意 PNG、JPG、JPEG、WebP 直接生成皮肤（配色 + 背景底图）
 - **动图背景**：GIF、动态 WebP、动态 AVIF 原样注入、保留动画播放（跳过 canvas 重编码，仍用第一帧取色）；动图限 3MB、最长边 1920px（体积为适配 localStorage 配额，分辨率为避免拖慢渲染）
 - **视频背景**：MP4（H.264）抽帧取色，海报帧作 CSS 底图兜底，视频以固定背景层循环静音播放；原始视频存 IndexedDB（不占 localStorage 配额），限 30MB
-- **15 个内置预设**：Miku、原神 ×2、鸣潮 ×2、火影忍者 ×2、恋与深空 ×2、猫鼠、海滩夜晚、小可爱、冷杉雨（MP4 视频）、月夜、温泉雪（MP4 视频）
+- **18 个内置预设**：Miku、原神 ×2、鸣潮 ×2、火影忍者 ×2、恋与深空 ×2、猫鼠、海滩夜晚、小可爱、冷杉雨（MP4 视频）、月夜、温泉雪（MP4 视频），外加三款整页 CSS 定制主题「QQ 2008 / 腾讯云 TDP（浅色 · 深色）」
 - **深浅色自动适配**：根据主题配色的 surface 明度自动切换 WorkBuddy 的 `data-vscode-theme-kind`，让 VS Code 原生控件（输入框、按钮等）跟着深浅色变
 - **双平台**：macOS（`.command`）+ Windows（`.ps1`）
 - **随时还原**：暂停皮肤或切回原生界面，官方安装包始终原封不动
@@ -85,7 +85,7 @@ node src/cli.mjs apply --theme genshin-night
 .\scripts\pause.ps1
 ```
 
-> 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重跑一次 apply 即可回来——不带主题参数时会自动恢复你上次在 🎨 菜单里选的皮肤（含自定义皮肤）。
+> 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重跑一次 apply 即可回来——不带主题参数时会自动恢复你上次在 🎨 菜单里的选择（内置主题 / 自定义皮肤 / 原生浅色 / 原生深色）。
 >
 > 不想每次手动重跑？用**看护模式**：`node src/cli.mjs watch`（或 Windows `.\scripts\apply.ps1 -Watch`）。它会常驻探测：WorkBuddy 以非调试模式重启时自动拉起并恢复皮肤；界面整页重载（皮肤掉了但调试端口还在）时直接重注；你主动退出 WorkBuddy 时它只待命，绝不擅自拉起。Ctrl+C 退出看护。
 
@@ -93,12 +93,11 @@ node src/cli.mjs apply --theme genshin-night
 
 应用皮肤后，WorkBuddy 右上角（titlebar 下方）会出现 🎨 按钮：
 
-- 点击展开主题列表，点击任意主题即时切换；点击面板外任意位置自动收起
-- 视频主题与动图主题（GIF / 动态 WebP / 动态 AVIF / MP4）在列表行尾带「动态」「动图」标注
-- 按钮悬浮在原生按钮行正下方、紧贴顶部工具栏下沿，水平位置跟随原生按钮行右缘（右侧详情栏打开时自动左移），不与原生按钮重叠
-- 「＋ 自定义皮肤」上传本地图片或 MP4 视频生成主题（图片 canvas 自动取色 + 压缩成 webp；GIF/动态 WebP/动态 AVIF 保留动画不压缩，限 3MB、最长边 1920px；MP4 抽帧取色、海报帧兜底、循环静音播放，原始视频存 IndexedDB，限 30MB）
-- 自定义主题最多 10 个槽位，每个独立持久化（元数据在 localStorage，视频文件在 IndexedDB），行尾 × 单独删除
-- 「原生界面」恢复官方外观
+- 点击弹出皮肤选择弹窗（遮罩 + 居中对话框），按「原生主题 / 定制主题 / 图片主题 / 自定义主题」分类网格陈列缩略图卡片，点击卡片即时切换；Esc、点击遮罩或右上角 × 关闭
+- 图片/视频主题卡片直接展示 hero/海报帧缩略图（从条目 CSS 提取，零额外传输）；定制主题展示主题色渐变卡；视频/动图主题（GIF / 动态 WebP / 动态 AVIF / MP4）缩略图右下角带「动态」「动图」标注
+- 自定义主题单独成组，标题行显示槽位占用（x/10）；卡片上可切换明暗（自/浅/深）与单独删除（×）；虚线「自定义主题」卡上传本地图片或 MP4 视频生成主题（图片 canvas 自动取色 + 压缩成 webp；GIF/动态 WebP/动态 AVIF 保留动画不压缩，限 3MB、最长边 1920px；MP4 抽帧取色、海报帧兜底、循环静音播放，原始视频存 IndexedDB，限 30MB）
+- 按钮默认悬浮在原生按钮行正下方、紧贴顶部工具栏下沿，水平位置跟随原生按钮行右缘（右侧详情栏打开时自动左移），不与原生按钮重叠；支持按住拖拽到任意位置（坐标按视口宽高比例持久化到 localStorage，重启后保留，窗口最大化/缩放时按同比例自适应换算并始终夹取在视口内），双击按钮复位回默认位置
+- 「原生界面 · 浅色 / 原生界面 · 深色」恢复官方外观并钉住对应明暗模式（重新 apply 时自动恢复上次选择）
 
 ## 右侧定位按钮
 
@@ -106,7 +105,9 @@ node src/cli.mjs apply --theme genshin-night
 
 - 滚动容器与提问锚点均为启发式探测（优先 `.messages-container`，回退「可滚动 + 占宽≥40% + 面积最大」；提问锚点优先 `data-role=user` 等选择器，回退消息列表直接子项），不依赖特定 DOM 版本
 - 平滑滚动为 rAF 三次缓出（420ms），目标每帧按最新 `scrollHeight` 夹取——流式输出时「回到底部」能跟随增长到底；滚轮/触摸介入立即取消动画让出控制权
+- 边界灰化：已在顶部时「回到顶部 / 上一个提问」自动禁用置灰，底部时「下一个提问 / 回到底部」同理，随滚动实时刷新
 - 显隐按 rAF 合帧驱动（scroll 捕获监听 + 布局变更观察），容器不可滚动时自动隐藏
+- 位置锚定**对话框上方右侧**：底边固定在输入框顶上方 12px，右缘对齐输入框右缘外侧 6px——输入框是会话页最稳定的地标，不随消息布局漂移；输入框探测失败时退回固定位置（right:14 / bottom:96）
 
 ## 自定义主题
 
@@ -117,7 +118,7 @@ node src/cli.mjs create --image "/path/to/hero.webp" --name "My Skin"
 node src/cli.mjs apply --theme my-skin
 ```
 
-或直接在 🎨 菜单里选「＋ 自定义皮肤」上传图片或 MP4 视频，自动取色并持久化（图片在 localStorage，视频在 IndexedDB）。
+或直接在 🎨 菜单里选「＋ 自定义主题」上传图片或 MP4 视频，自动取色并持久化（图片在 localStorage，视频在 IndexedDB）。
 
 ## 极简主题格式
 
@@ -139,8 +140,31 @@ node src/cli.mjs apply --theme my-skin
 只有 `schemaVersion`、`id`、`name` 和 `hero` 必填。素材必须位于主题目录内，颜色和文案（`copy`）都可省略。
 
 - `surface` 的明度决定 light/dark 模式（亮度 > 140 为 light），自动切换 WorkBuddy 的 `data-vscode-theme-kind`
+- 首页/空会话主标题自动渲染为 `accent`→`secondary` 渐变文字，左上角 WorkBuddy 字标变为双色字标（Work=文本色、Buddy=`accent`，硬切渐变实现）；两者均随主题/自定义取色自适应。`copy.tagline` 配置时在标题下方输出渐变标语（如内置的「原神 · 晨曦：晨曦启程，冒险不止」）
 - `hero` 支持 PNG / JPG / JPEG / WebP / GIF / AVIF / MP4（GIF、动态 WebP、动态 AVIF 保留动画播放；AVIF 需 Chromium 85+）
 - `hero` 为 MP4（H.264，限 30MB）时是视频主题：必须再配 `poster` 海报帧图片作 CSS 底图兜底，视频在注入时预置进渲染进程 IndexedDB（按字节数判重，重复 apply 不重复传输），以固定背景层循环静音播放。示例：`"hero": "hero.mp4", "poster": "hero.webp"`
+
+### 纯 CSS 主题（定制主题）
+
+图片主题之外也支持整页定制 CSS 主题（如内置的 QQ 2008 / 腾讯云 TDP）：`theme.json` 用 `css` 字段替代 `hero`，CSS 即皮肤本体，不经过模板生成：
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "my-css-skin",
+  "name": "My CSS Skin",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "order": -10,
+  "colors": { "accent": "#5141F2", "surface": "#F5F6F8" }
+}
+```
+
+- CSS 中的 `url("./asset")` 相对引用（PNG/SVG/WebP 等图片）在注入时内联为 data URL，资源必须位于主题目录内；`data:`/绝对 URL 原样保留
+- `colors.accent`/`colors.surface` 仍必填语义不变：菜单圆点色、明暗模式钉住（CSS 内的 `body.dark` 作用域据此激活）
+- `order` 控制菜单排序（数值小者在前）；CSS 主题在菜单中归入「定制主题」分组，图片/视频主题归入「图片主题」分组
+- 可选 `thumbnail` 字段：「选择主题」弹窗卡片封面图（主题目录内的 PNG/JPEG/WebP/GIF/AVIF，≤512KB，建议 640×400 WebP）。纯 CSS 主题没有 hero，未配置时显示 accent→secondary 渐变色块；图片/视频主题也可配置，覆盖从 hero/poster 自动提取的封面。内置 QQ 2008 / TDP 两款的 `thumbnail.webp` 由吉祥物素材叠加主题渐变合成
+- 可选 `js` 字段（如 `"js": "skin.js"`）携带伴随脚本：主题激活时作为函数体执行（`new Function`），返回值若是函数则作为拆除回调，在切换主题/恢复原生/暂停注入时调用；js 内的 `"./asset"` 相对资源引用（图片/音频/视频）同样内联为 data URL。用于 CSS 做不到的 DOM 注入与交互行为——TDP 主题主界面的宇航员动效层、QQ 2008 的音效（消息/失败/敲门，复用旧项目的 `WORKBUDDY_THEME_SOUND_ENABLED`/`VOLUME` 设置键，1200ms 节流）与企鹅挂件均由此实现。页面 CSP 禁 eval 时降级为警告，CSS 皮肤本体不受影响
 
 ## 命令行
 
@@ -165,12 +189,14 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 
 单元测试覆盖不依赖真实 WorkBuddy 的核心逻辑（用假 CDP Session / 假 WebSocket 与临时目录替代真实依赖，运行 WorkBuddy 与否都能跑通）：
 
-- `test/theme-schema.test.mjs` — 主题清单校验：`poster` 规则（视频 hero 必填、图片 hero 禁填、必须是主题目录内的图片相对路径）与 `loadTheme` 的 realpath 逃逸防护（junction / symlink）、目录内合法符号链接、清单 JSON 报错带路径
-- `test/injector.test.mjs` — 视频预置链路：4MB 分块切分与暂存清理、写入字节数校验、`Uint8Array.fromBase64` 快路径 + `atob` 回退 + 主线程让出、按尺寸判重跳过、单个渲染进程失败降级为警告、本地文件缺失降级；`applySkin` 每个渲染进程只开一条会话（视频预置失败时换新连接继续注入）；`removeSkin` 先调菜单 teardown
+- `test/theme-schema.test.mjs` — 主题清单校验：`poster` 规则（视频 hero 必填、图片 hero 禁填、必须是主题目录内的图片相对路径）、纯 CSS 主题规则（`css` 字段替代 `hero`、无 hero 时禁带 poster）与 `loadTheme` 的 realpath 逃逸防护（junction / symlink）、目录内合法符号链接、清单 JSON 报错带路径
+- `test/injector.test.mjs` — 视频预置链路：4MB 分块切分与暂存清理、写入字节数校验、`Uint8Array.fromBase64` 快路径 + `atob` 回退 + 主线程让出、按尺寸判重跳过、单个渲染进程失败降级为警告、本地文件缺失降级；CSS 主题资源内联（`url(./asset)` → data URL、逃逸目录/不支持类型拒绝、绝对 URL 保留）；`applySkin` 每个渲染进程只开一条会话（视频预置失败时换新连接继续注入）；`removeSkin` 先调菜单 teardown
 - `test/skin-menu.test.mjs` — 🎨 菜单注入脚本：生成脚本可被 JS 引擎编译、切换 / 上传 / 恢复原生各路径的异常兜底与错误日志、大图解码快路径、IndexedDB 阻塞与中止处理、重复注入 / 暂停时的 teardown（断观察者、解除明暗钉住、移除全局监听）、布局校准按 rAF 合帧、自定义主题列表缓存、自愈重挂（菜单/样式/定位按钮被框架移除后自动重挂，teardown 先断观察者再移除）、右侧定位按钮（四键齐全、容器/锚点启发式与兜底、平滑滚动、滚轮取消动画、显隐合帧、teardown 拆除）
+- `test/skin-css.test.mjs` — 皮肤 CSS 生成：首页主标题 accent→secondary 渐变文字与 `drop-shadow` 光晕（不用会透过字形的 `text-shadow`）、`copy.tagline` 渐变标语（未配置时不注入文案）、左上角字标硬切渐变双色且全 `var()` 引用（自定义取色自动适配，不硬编码色值）
 - `test/theme-store.test.mjs` — 主题列表：多目录同 id 去重（内置优先）、缺 `name` 不再崩、跳过坏清单与 `.tmp-` 残留目录；`create` 名称校验
+- `test/bundled-themes.test.mjs` — 内置主题集成护栏：`themes/` 下每个目录都通过 `loadTheme` 完整校验、主题 id 与目录名一致且不重复、随主题的 `js` 文本可被 JS 引擎编译
 - `test/cdp-client.test.mjs` — CDP 会话：默认不 enable 任何域、`enableDomains` 显式开启与参数校验
-- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`watch` 命令接线；`doctor` 的 Node 版本检查与状态展示
+- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、恢复上次原生浅色/深色（按默认主题注入菜单但不应用皮肤，只钉明暗）、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`watch` 命令接线；`doctor` 的 Node 版本检查与状态展示
 - `test/watcher.test.mjs` — 看护循环：页面重载重注、非调试重启拉起+重注、主动退出只待命、启动中不误判、失败退避翻倍（上限 60s）、探测异常落日志继续
 - `test/state-store.test.mjs` — 状态回执：读写往返、浅合并、损坏文件回退 null、原子写入
 
@@ -193,6 +219,9 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 | `misty-fir-rain` | 下雨-冷杉 | 墨绿 · 深色 · MP4 视频 |
 | `moonlit-night` | 月夜 | 深蓝 · 深色 |
 | `snow-animals` | 下雪-温泉 | 浅蓝 · 浅色 · MP4 视频 |
+| `qq2008` | QQ 2008 | 蓝 · 浅色 · CSS 定制主题（含音效与企鹅挂件） |
+| `tdp-pro` | 腾讯云 TDP | 靛紫 · 浅色 · CSS 定制主题（宇航员动效层） |
+| `tdp-pro-dark` | 腾讯云 TDP · 深色 | 靛紫 · 深色 · CSS 定制主题 |
 
 ## 设计边界
 
@@ -203,7 +232,7 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 - 内置视频主题的 MP4 需在注入时预置进渲染进程 IndexedDB；单次预置失败（渲染进程超时 / 内存不足）只记录警告，不阻塞皮肤本身注入，菜单侧对视频数据缺失有兜底提示
 - 每次 apply / pause 会在状态目录落一份回执（`state.json`：时间、主题、成败、错误信息），`doctor` 会一并展示；写入失败不影响换肤本身
 - 不修改官方安装目录与代码签名
-- 深色主题已适配 `data-vscode-theme-kind` 自动切换；点「原生界面」恢复时默认回到 light（若你原生是 dark 需手动切回）
+- 深色主题已适配 `data-vscode-theme-kind` 自动切换；「原生界面 · 深色」可显式钉住暗色（选择会持久化，重新 apply 自动恢复）
 - 当前版本针对 WorkBuddy 的 `--cb-*` 设计变量系统和 `[data-view-id]` DOM 锚点适配，与 Codex 的 DOM 结构完全不同
 
 ## 技术原理

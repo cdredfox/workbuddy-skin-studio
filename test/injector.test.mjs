@@ -238,3 +238,188 @@ test("removeSkin：先调菜单 teardown 再移除节点，并发处理所有 ta
     assert.ok(expression.indexOf("__workbuddySkinTeardown") < expression.indexOf(".remove()"));
   }
 });
+
+test("applySkin：CSS 主题资源内联为 data URL，菜单分组为 custom", async () => {
+  await withTempDir(async (dir) => {
+    const png = Buffer.from("89504e470d0a1a0a", "hex");
+    await writeFile(join(dir, "logo.png"), png);
+    await writeFile(
+      join(dir, "skin.css"),
+      'a { background: url("./logo.png"); } b { background: url( ./logo.png ); } c { background: url("https://x.test/y.png"); }',
+    );
+    const cssTheme = {
+      manifest: { id: "css-theme", name: "CSS", colors: { accent: "#5141F2", surface: "#F5F6F8" } },
+      cssPath: join(dir, "skin.css"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session, sessions } = sessionFactory();
+    const result = await applySkin({
+      loadedTheme: cssTheme,
+      themes: [cssTheme],
+      port: 9223,
+      deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+    });
+    assert.equal(result.applied, 1);
+    const expression = sessions[0].lastCall();
+    assert.ok(expression.includes("data:image/png;base64"), "应内联 PNG 为 data URL");
+    assert.ok(!expression.includes('url("./logo.png")'), "相对引用应全部被重写");
+    assert.ok(expression.includes("https://x.test/y.png"), "绝对 URL 应原样保留");
+    assert.ok(expression.includes('"group":"custom"'), "CSS 主题应标记为定制主题分组");
+    assert.equal(sessions[0].calls.filter((call) => call.includes('objectStore("videos")')).length, 0, "无视频主题不应触碰 IndexedDB");
+  });
+});
+
+test("applySkin：CSS 主题引用逃逸主题目录的资源时拒绝", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "skin.css"), 'a { background: url("./../outside.png"); }');
+    const cssTheme = {
+      manifest: { id: "evil", name: "Evil", colors: {} },
+      cssPath: join(dir, "skin.css"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session } = sessionFactory();
+    await assert.rejects(
+      applySkin({
+        loadedTheme: cssTheme,
+        themes: [cssTheme],
+        port: 9223,
+        deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+      }),
+      /逃逸主题目录/,
+    );
+  });
+});
+
+test("applySkin：CSS 主题引用不支持的资源类型时拒绝", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "skin.css"), 'a { src: url("./font.exe"); }');
+    await writeFile(join(dir, "font.exe"), Buffer.alloc(4, 1));
+    const cssTheme = {
+      manifest: { id: "bad-asset", name: "Bad", colors: {} },
+      cssPath: join(dir, "skin.css"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session } = sessionFactory();
+    await assert.rejects(
+      applySkin({
+        loadedTheme: cssTheme,
+        themes: [cssTheme],
+        port: 9223,
+        deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+      }),
+      /不支持的资源类型/,
+    );
+  });
+});
+
+test("applySkin：CSS 主题的伴随 JS 透传进菜单脚本，相对资源内联为 data URL", async () => {
+  await withTempDir(async (dir) => {
+    const png = Buffer.from("89504e470d0a1a0a", "hex");
+    await writeFile(join(dir, "hero.webp"), png);
+    await writeFile(join(dir, "skin.css"), "body { color: red; }");
+    await writeFile(join(dir, "skin.js"), 'const img = "./hero.webp"; return () => {};');
+    const cssTheme = {
+      manifest: { id: "css-js", name: "CssJs", colors: { accent: "#5141F2", surface: "#F5F6F8" } },
+      cssPath: join(dir, "skin.css"),
+      jsPath: join(dir, "skin.js"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session, sessions } = sessionFactory();
+    await applySkin({
+      loadedTheme: cssTheme,
+      themes: [cssTheme],
+      port: 9223,
+      deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+    });
+    const expression = sessions[0].lastCall();
+    assert.ok(expression.includes("data:image/webp;base64"), "js 内相对资源应内联为 data URL");
+    assert.ok(!expression.includes('"./hero.webp"'), "js 内相对引用应全部被重写");
+    assert.ok(expression.includes("runThemeJs"), "菜单脚本应包含伴随 JS 执行逻辑");
+  });
+});
+
+test("applySkin：伴随 JS 引用逃逸主题目录的资源时拒绝", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "skin.css"), "body { color: red; }");
+    await writeFile(join(dir, "skin.js"), 'const img = "../outside.webp"; return () => {};');
+    const cssTheme = {
+      manifest: { id: "evil-js", name: "EvilJs", colors: {} },
+      cssPath: join(dir, "skin.css"),
+      jsPath: join(dir, "skin.js"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session } = sessionFactory();
+    await assert.rejects(
+      applySkin({
+        loadedTheme: cssTheme,
+        themes: [cssTheme],
+        port: 9223,
+        deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+      }),
+      /逃逸主题目录/,
+    );
+  });
+});
+
+test("applySkin：伴随 JS 内联音频资源（wav → audio/wav，mp3 → audio/mpeg）", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "a.wav"), Buffer.alloc(8, 2));
+    await writeFile(join(dir, "b.mp3"), Buffer.alloc(8, 3));
+    await writeFile(join(dir, "skin.css"), "body { color: red; }");
+    await writeFile(join(dir, "skin.js"), 'const a = new Audio("./a.wav"); const b = new Audio("./b.mp3"); return () => {};');
+    const cssTheme = {
+      manifest: { id: "qq-like", name: "QQ", colors: {} },
+      cssPath: join(dir, "skin.css"),
+      jsPath: join(dir, "skin.js"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session, sessions } = sessionFactory();
+    await applySkin({
+      loadedTheme: cssTheme,
+      themes: [cssTheme],
+      port: 9223,
+      deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+    });
+    const expression = sessions[0].lastCall();
+    assert.ok(expression.includes("data:audio/wav;base64"));
+    assert.ok(expression.includes("data:audio/mpeg;base64"));
+    assert.ok(!expression.includes('"./a.wav"') && !expression.includes('"./b.mp3"'));
+  });
+});
+
+test("applySkin：theme.json thumbnail 内联为 data URL 随条目下发（thumb 字段）", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "skin.css"), "a { color: red; }");
+    await writeFile(join(dir, "thumb.webp"), Buffer.from("RIFFxxxxWEBP"));
+    const cssTheme = {
+      manifest: { id: "css-theme", name: "CSS", colors: { accent: "#5141F2", surface: "#F5F6F8" } },
+      cssPath: join(dir, "skin.css"),
+      thumbnailPath: join(dir, "thumb.webp"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session, sessions } = sessionFactory();
+    await applySkin({
+      loadedTheme: cssTheme,
+      themes: [cssTheme],
+      port: 9223,
+      deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+    });
+    const expression = sessions[0].lastCall();
+    const expected = `"thumb":"data:image/webp;base64,${Buffer.from("RIFFxxxxWEBP").toString("base64")}"`;
+    assert.ok(expression.includes(expected), "条目应携带 thumbnail data URL");
+  });
+});

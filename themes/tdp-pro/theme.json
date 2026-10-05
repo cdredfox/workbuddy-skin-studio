@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "tdp-pro",
+  "name": "腾讯云 TDP",
+  "css": "skin.css",
+  "js": "skin.js",
+  "thumbnail": "thumbnail.webp",
+  "order": -12,
+  "colors": {
+    "accent": "#5141F2",
+    "secondary": "#7C3AED",
+    "surface": "#F5F6F8",
+    "text": "#111827"
+  }
+}

@@ -5,7 +5,7 @@ import { runCli } from "../src/cli.mjs";
 
 // runCli 全部依赖可注入：这里只验证 apply 的编排（主题选择、并发加载、坏主题跳过、恢复自定义皮肤）
 function applyOverrides({ saved = null, themes, failLoad = new Set() }) {
-  const calls = { applySkin: null, activateSavedSkin: null };
+  const calls = { applySkin: null, activateSavedSkin: null, activateSavedNative: null };
   const overrides = {
     bundledThemesRoot: "bundled",
     userThemesRoot: "user",
@@ -24,6 +24,10 @@ function applyOverrides({ saved = null, themes, failLoad = new Set() }) {
     },
     activateSavedSkin: async (args) => {
       calls.activateSavedSkin = args;
+      return { activated: 1 };
+    },
+    activateSavedNative: async (args) => {
+      calls.activateSavedNative = args;
       return { activated: 1 };
     },
   };
@@ -59,6 +63,19 @@ test("apply 无 --theme：记住的内置主题已不存在时回退默认主题
   const result = await runCli(["apply"], overrides);
   assert.equal(result.themeId, "miku-light");
   assert.equal(calls.activateSavedSkin, null);
+});
+
+test("apply 无 --theme：恢复上次选中的原生浅色/深色（注入默认主题但不应用，只钉明暗）", async () => {
+  for (const [saved, mode] of [["native-light", "light"], ["native-dark", "dark"]]) {
+    const { overrides, calls } = applyOverrides({ saved, themes: THEMES });
+    const result = await runCli(["apply"], overrides);
+    assert.equal(calls.applySkin.activeId, null, `${saved} 注入时不应用任何皮肤`);
+    assert.equal(calls.applySkin.loadedTheme.manifest.id, "miku-light", `${saved} 按默认主题注入菜单`);
+    assert.deepEqual(calls.activateSavedNative, { port: 9223, mode });
+    assert.equal(calls.activateSavedSkin, null);
+    assert.equal(result.themeId, saved);
+    assert.equal(result.restored, true);
+  }
 });
 
 test("apply --theme：指定的主题不存在时报错", async () => {

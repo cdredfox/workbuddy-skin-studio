@@ -9,7 +9,12 @@ import {
   win32,
 } from "node:path";
 
-import { IMAGE_EXTENSIONS, MAX_THEME_VIDEO_BYTES, THEME_SCHEMA_VERSION } from "./constants.mjs";
+import {
+  IMAGE_EXTENSIONS,
+  MAX_THEME_THUMBNAIL_BYTES,
+  MAX_THEME_VIDEO_BYTES,
+  THEME_SCHEMA_VERSION,
+} from "./constants.mjs";
 
 const COLOR_KEYS = ["accent", "secondary", "surface", "text"];
 const COPY_KEYS = ["brand", "headline", "tagline"];
@@ -54,8 +59,26 @@ function normalizeMediaPath(value, label, extensions, types) {
   return value;
 }
 
-function normalizeHero(hero) {
+function normalizeHero(hero, hasCss) {
+  // 纯 CSS 主题（定制主题移植）无 hero 底图；无 css 时 hero 必填
+  if (hero === undefined || hero === null) {
+    if (hasCss) return null;
+    throw new Error("theme hero must be a relative path inside the theme directory");
+  }
   return normalizeMediaPath(hero, "hero", HERO_EXTENSIONS, "PNG, JPEG, WebP, GIF, AVIF, or MP4");
+}
+
+function normalizeCss(css) {
+  if (css === undefined || css === null) return null;
+  return normalizeMediaPath(css, "css", new Set([".css"]), "a CSS file");
+}
+
+// 伴随 JS（如 TDP 英雄层的 DOM 注入）：只允许挂在纯 CSS 主题上，
+// 随主题激活执行、切换/暂停时调用其返回的拆除函数
+function normalizeJs(js, hasCss) {
+  if (js === undefined || js === null) return null;
+  if (!hasCss) throw new Error("theme js is only valid together with a css theme");
+  return normalizeMediaPath(js, "js", new Set([".js"]), "a JS file");
 }
 
 // 视频主题（hero 为 MP4）必须配 poster 海报帧图片：作 CSS 底图兜底，
@@ -68,6 +91,13 @@ function normalizePoster(poster, hero) {
   }
   if (poster === undefined) throw new Error("video hero requires a poster image");
   return normalizeMediaPath(poster, "poster", IMAGE_EXTENSIONS, "PNG, JPEG, WebP, GIF, or AVIF");
+}
+
+// 主题选择弹窗缩略图（可选，任意主题可用）：纯 CSS 主题无 hero 可取，靠它提供封面；
+// 图片/视频主题配置后覆盖从 hero/poster 自动提取的封面
+function normalizeThumbnail(thumbnail) {
+  if (thumbnail === undefined || thumbnail === null) return null;
+  return normalizeMediaPath(thumbnail, "thumbnail", IMAGE_EXTENSIONS, "PNG, JPEG, WebP, GIF, or AVIF");
 }
 
 function normalizeColors(colors) {
@@ -116,13 +146,20 @@ export function validateThemeManifest(input) {
     throw new Error("theme name must be a non-empty string");
   }
 
-  const hero = normalizeHero(input.hero);
+  const css = normalizeCss(input.css);
+  const hero = normalizeHero(input.hero, css !== null);
+  if (hero === null && input.poster !== undefined) {
+    throw new Error("theme poster requires a video hero");
+  }
   return {
     schemaVersion: THEME_SCHEMA_VERSION,
     id: input.id,
     name: input.name.trim(),
     hero,
-    poster: normalizePoster(input.poster, hero),
+    poster: hero === null ? null : normalizePoster(input.poster, hero),
+    css,
+    js: normalizeJs(input.js, css !== null),
+    thumbnail: normalizeThumbnail(input.thumbnail),
     colors: normalizeColors(input.colors),
     copy: normalizeCopy(input.copy),
   };
@@ -160,8 +197,10 @@ export async function loadTheme(themeDir) {
   const manifest = validateThemeManifest(raw);
 
   const dirs = { root, realRoot: await realpath(root) };
-  const hero = await resolveMediaFile(dirs, manifest.hero, "hero");
-  if (VIDEO_EXTENSIONS.has(extname(manifest.hero).toLowerCase()) && hero.size > MAX_THEME_VIDEO_BYTES) {
+  // 纯 CSS 主题（css 字段、无 hero）：只校验 css 文件本身；url()/import 资源
+  // 在注入阶段由 injector 内联时再逐个解析校验
+  const hero = manifest.hero === null ? null : await resolveMediaFile(dirs, manifest.hero, "hero");
+  if (hero && VIDEO_EXTENSIONS.has(extname(manifest.hero).toLowerCase()) && hero.size > MAX_THEME_VIDEO_BYTES) {
     throw new Error(
       `theme hero video exceeds the ${MAX_THEME_VIDEO_BYTES / 1024 / 1024}MB limit`,
     );
@@ -169,6 +208,22 @@ export async function loadTheme(themeDir) {
   const poster = manifest.poster
     ? await resolveMediaFile(dirs, manifest.poster, "poster")
     : null;
+  const css = manifest.css ? await resolveMediaFile(dirs, manifest.css, "css") : null;
+  const js = manifest.js ? await resolveMediaFile(dirs, manifest.js, "js") : null;
+  const thumbnail = manifest.thumbnail
+    ? await resolveMediaFile(dirs, manifest.thumbnail, "thumbnail")
+    : null;
+  if (thumbnail && thumbnail.size > MAX_THEME_THUMBNAIL_BYTES) {
+    throw new Error(`theme thumbnail exceeds the ${MAX_THEME_THUMBNAIL_BYTES / 1024}KB limit`);
+  }
 
-  return { manifest, heroPath: hero.path, posterPath: poster?.path ?? null, root };
+  return {
+    manifest,
+    heroPath: hero?.path ?? null,
+    posterPath: poster?.path ?? null,
+    cssPath: css?.path ?? null,
+    jsPath: js?.path ?? null,
+    thumbnailPath: thumbnail?.path ?? null,
+    root,
+  };
 }

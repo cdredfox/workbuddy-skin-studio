@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { buildSkinCss } from "../src/skin-css.mjs";
 import { buildSkinMenuScript } from "../src/skin-menu.mjs";
 
 // 皮肤菜单脚本是字符串模板：无法直接在 Node 里跑 DOM，
@@ -70,7 +71,7 @@ test("teardown：脚本开头先拆上一轮注入，结尾登记本轮拆除（
     "pinnedDark = null",
     'removeEventListener("resize", scheduleReposition)',
     'removeEventListener("storage", onStorage)',
-    'removeEventListener("mousedown", onOutsideMouseDown, true)',
+    'removeEventListener("keydown", onEscKey, true)',
     "releaseVideo()",
     "videoStore.close()",
     "root.remove()",
@@ -132,6 +133,35 @@ test("定位按钮：用户滚轮/触摸介入取消动画，显隐按 rAF 合�
   assert.ok(script.includes("scheduleReposition(); scheduleNavUpdate();"));
 });
 
+test("定位按钮：位置锚定对话框上方右侧，resize 触发重算并在 teardown 拆除", () => {
+  const script = build();
+  // 对话框探测：textarea / contenteditable / composer 类，限视口下半部、取最宽者
+  assert.ok(script.includes("findComposer"));
+  assert.ok(script.includes("textarea,[contenteditable=true]"));
+  assert.ok(script.includes("r.top < viewportHeight * 0.4"));
+  // 底边固定在输入框顶上方 12px，右缘对齐输入框右缘外侧 6px；上下限防出屏
+  assert.ok(script.includes("window.innerHeight - composer.top + 12"));
+  assert.ok(script.includes("Math.max(-6, Math.round(window.innerWidth - composer.right - 6))"));
+  assert.ok(script.includes("Math.min(Math.max(8, bottom), window.innerHeight - 160)"));
+  // 探测失败兜底固定位置
+  assert.ok(script.includes('navRoot.style.bottom = "96px";'));
+  // 仅在显示时重算定位与边界灰化
+  assert.ok(script.includes("updateNavPlacement();"));
+  assert.ok(script.includes("updateNavEdges(box);"));
+  // 边界灰化：顶部禁用回到顶部/上一个提问，底部禁用下一个提问/回到底部；disabled 阻断点击
+  assert.ok(script.includes("const [navBtnTop, navBtnPrev, navBtnNext, navBtnBottom] = navRoot.children;"));
+  assert.ok(script.includes("btn.disabled = !enabled;"));
+  assert.ok(script.includes("box.scrollTop <= NAV_TOLERANCE"));
+  assert.ok(script.includes("box.scrollTop >= max - NAV_TOLERANCE"));
+  assert.ok(script.includes("setNavEnabled(navBtnTop, !atTop);"));
+  assert.ok(script.includes("setNavEnabled(navBtnBottom, !atBottom);"));
+  // resize 重算 + teardown 拆除
+  assert.ok(script.includes('addEventListener("resize", scheduleNavUpdate)'));
+  const register = script.indexOf('window["__workbuddySkinTeardown"] = () =>');
+  const body = script.slice(register, script.indexOf("};", register));
+  assert.ok(body.includes('removeEventListener("resize", scheduleNavUpdate)'));
+});
+
 test("定位按钮：teardown 拆除动画/监听/节点，自愈重挂覆盖 navRoot", () => {
   const script = build();
   const register = script.indexOf('window["__workbuddySkinTeardown"] = () =>');
@@ -156,6 +186,42 @@ test("reposition：MutationObserver 按 rAF 合帧，不再每次变更都同步
   assert.ok(!script.includes("queueMicrotask"));
 });
 
+test("按钮拖拽：默认锚定 reposition，拖拽切自由定位并持久化，双击复位", () => {
+  const script = build();
+  assert.doesNotThrow(() => new Function(script));
+  // 持久化键进入 payload
+  assert.ok(script.includes('"posKey":"workbuddySkinMenuPos"'));
+  // 默认位置仍锚定原生按钮行（customPos 为空时走原 right 逻辑）
+  assert.ok(script.includes('document.querySelector(".workbuddy-topbar-actions")'));
+  assert.ok(script.includes("if (customPos) { applyCustomPos(); return; }"));
+  // 指针拖拽：capture + 5px 阈值 + 拖后抑制 click
+  assert.ok(script.includes('button.addEventListener("pointerdown"'));
+  assert.ok(script.includes("button.setPointerCapture(event.pointerId)"));
+  assert.ok(script.includes("Math.hypot(dx, dy) < 5"));
+  assert.ok(script.includes("if (suppressClick) { suppressClick = false; return; }"));
+  // 拖拽结束持久化 + 双击复位默认位置
+  assert.ok(script.includes("if (dragState.moved) { savePos(customPos); suppressClick = true; }"));
+  assert.ok(script.includes('button.addEventListener("dblclick"'));
+  assert.ok(script.includes("resetPos()"));
+  // 挂载后按真实尺寸再夹取一次
+  assert.ok(script.includes("if (customPos) applyCustomPos();"));
+});
+
+test("按钮拖拽：坐标按视口比例（fx/fy）持久化，窗口最大化/缩放时自适应换算并夹取", () => {
+  const script = build();
+  // 拖拽中即按比例记录，应用时按当前视口换算像素
+  assert.ok(script.includes("(dragState.baseX + dx) / Math.max(1, window.innerWidth)"));
+  assert.ok(script.includes("(dragState.baseY + dy) / Math.max(1, window.innerHeight)"));
+  assert.ok(script.includes("customPos.fx * window.innerWidth"));
+  assert.ok(script.includes("customPos.fy * window.innerHeight"));
+  // 视口夹取（按钮不甩出可视区）
+  assert.ok(script.includes("window.innerWidth - root.offsetWidth"));
+  // 读取兼容旧版绝对像素坐标
+  assert.ok(script.includes("saved.x / Math.max(1, window.innerWidth)"));
+  // resize 时经 reposition → applyCustomPos 重算
+  assert.ok(script.includes('window.addEventListener("resize", scheduleReposition)'));
+});
+
 test("buildCustomCss：hero（可能数 MB）最后替换，前面的 split 只扫小模板", () => {
   const script = build();
   const start = script.indexOf("const buildCustomCss");
@@ -176,4 +242,126 @@ test("常量与 Node 端同源：视频上限、动图分辨率、IndexedDB 库�
   assert.ok(script.includes(`MAX_VIDEO_BYTES = ${30 * 1024 * 1024}`));
   assert.ok(script.includes("MAX_ANIMATED_DIMENSION = 1920"));
   assert.ok(script.includes('indexedDB.open("workbuddy-skin-studio", 1)'));
+});
+
+test("伴随 JS：激活执行、返回值作拆除回调，切换/恢复原生/全局 teardown 均拆除", () => {
+  const cssJsEntry = { id: "css-js", name: "CssJs", css: "body{}", group: "custom", js: "return () => {}" };
+  const script = buildSkinMenuScript({ entries: [cssJsEntry], activeId: null, styleId: "s", menuId: "m" });
+  // 脚本可编译，js 文本进入 payload
+  assert.doesNotThrow(() => new Function(script));
+  assert.ok(script.includes("return () => {}"));
+  // 生命周期：setTheme 内最后执行；clearTheme 与全局 teardown 均先拆旧 JS
+  assert.ok(script.includes("runThemeJs(theme)"));
+  assert.ok(/clearTheme = \(\) => \{[\s\S]*?teardownThemeJs\(\)/.test(script));
+  assert.ok(/__workbuddySkinTeardown"\] = \(\) => \{[\s\S]*?teardownThemeJs\(\)/.test(script));
+  // CSP 禁 eval 时降级为警告而非炸掉换肤
+  assert.ok(script.includes("new Function(theme.js)()"));
+  assert.ok(script.includes("执行主题 JS 失败"));
+});
+
+test("伴随 JS：无 js 的条目归一为 null，不进入 payload", () => {
+  const script = build();
+  assert.ok(script.includes('"js":null'));
+});
+
+test("原生主题组：拆分为浅色/深色两行，分别钉住明暗并持久化 native-light/native-dark", () => {
+  const script = build();
+  assert.doesNotThrow(() => new Function(script));
+  // 两行（模板内汉字走双反斜杠转义，生成脚本中为单反斜杠  转义字面量）
+  assert.ok(script.includes(String.raw`card("\u539f\u751f\u754c\u9762 \u00b7 \u6d45\u8272"`));
+  assert.ok(script.includes(String.raw`card("\u539f\u751f\u754c\u9762 \u00b7 \u6df1\u8272"`));
+  // setNative：清空皮肤但钉住目标明暗（区别于 clearTheme 的 pin:false 交还应用）
+  assert.ok(script.includes('const setNative = (mode) => {'));
+  assert.ok(script.includes('"native-dark" : "native-light"'));
+  assert.ok(script.includes('applyMode(mode === "dark" ? "#101418" : "#ffffff")'));
+  assert.ok(script.includes('api.setNative') || script.includes('setNative,'));
+  // 行键入 rows Map，paint 可高亮
+  assert.ok(script.includes('rows.set("native-light"'));
+  assert.ok(script.includes('rows.set("native-dark"'));
+});
+
+test("皮肤弹窗：遮罩 + 居中对话框 + 分类网格，Esc/backdrop/关闭按钮均可关", () => {
+  const script = build();
+  assert.doesNotThrow(() => new Function(script));
+  // 遮罩与对话框
+  assert.ok(script.includes("position:fixed;inset:0;z-index:2147483001"));
+  assert.ok(script.includes("grid-template-columns:repeat(auto-fill,minmax(128px,1fr))"));
+  // 分类小节：原生/定制/图片/自定义（定制、图片按 group 拆分）
+  assert.ok(script.includes(String.raw`section("\u539f\u751f\u4e3b\u9898")`));
+  assert.ok(script.includes(String.raw`section("\u5b9a\u5236\u4e3b\u9898")`));
+  assert.ok(script.includes(String.raw`section("\u56fe\u7247\u4e3b\u9898")`));
+  assert.ok(script.includes(String.raw`section("\u81ea\u5b9a\u4e49\u4e3b\u9898\uff08\u53ef\u5207\u6362\u660e\u6697\u4e3b\u8272\uff09")`));
+  // 缩略图：图片主题从条目 CSS 提取内联图（零额外负载），定制主题用渐变色块兜底
+  assert.ok(script.includes("const thumbOf = (css) =>"));
+  assert.ok(script.includes("const swatchOf = (theme) =>"));
+  // 槽位计数（x/n）随增删刷新；槽位满时隐藏新增卡（上传入口），删除后恢复
+  assert.ok(script.includes(String.raw`"\u69fd\u4f4d " + count + "/" + data.maxCustomSlots`));
+  assert.ok(script.includes('uploadCard.style.display = count >= data.maxCustomSlots ? "none" : "";'));
+  // 关闭路径：backdrop 点击、Esc（capture）、关闭按钮；teardown 移除 Esc 监听
+  assert.ok(script.includes("event.target === overlay"));
+  assert.ok(script.includes('event.key === "Escape"'));
+  assert.ok(script.includes('removeEventListener("keydown", onEscKey, true)'));
+});
+
+test("皮肤弹窗：thumbOf 在生成脚本中能从真实主题 CSS 提取 hero（防模板字面量吃掉正则转义）", () => {
+  const script = build();
+  // 从生成后的脚本（而非源码）截取 thumbOf 函数体执行：源码里的 \( 进入模板字面量会被吃成
+  // 裸括号，曾导致内置图片主题缩略图全部回退渐变色块，字符串包含断言无法发现
+  const start = script.indexOf("const thumbOf = (css) =>");
+  const end = script.indexOf("\n  };", start) + 4;
+  const thumbOf = new Function(script.slice(start, end) + "\nreturn thumbOf;")();
+  const hero = "data:image/webp;base64,UklGRkJD+/=";
+  const css = buildSkinCss({
+    theme: { id: "t", name: "t", colors: { accent: "#24c9d7", secondary: "#e86fb7", surface: "#f4fbff", text: "#16323a" }, copy: null },
+    heroDataUrl: hero,
+  });
+  assert.equal(thumbOf(css), hero);
+  assert.equal(thumbOf(":root{--wb-a:1}"), null);
+});
+
+test("皮肤弹窗：缩略图以 <img> 元素直渲（规避 Blink 超长 data URL CSS 静默丢弃），删除按钮为垃圾桶图标，标题栏固定不滚", () => {
+  const script = build();
+  assert.doesNotThrow(() => new Function(script));
+  // thumb 为 data URL 时走 <img> 属性通道（不受 CSS 声明长度限制），object-fit 铺满封面
+  assert.ok(script.includes('document.createElement("img")'));
+  assert.ok(script.includes("img.src = thumb;"));
+  assert.ok(script.includes("img.draggable = false;"));
+  assert.ok(script.includes("object-fit:cover"));
+  // 无 thumb（定制/原生主题）时 swatch 渐变兜底
+  assert.ok(script.includes('swatch = "rgba(0,0,0,.08)"'));
+  // 删除按钮：垃圾桶 SVG（trash-2），非 × 字符
+  assert.ok(script.includes("trash") || script.includes('viewBox="0 0 24 24"'));
+  assert.ok(script.includes('stroke="currentColor"'));
+  // 标题栏固定不滚（flex:none），正文独立滚动（滚动条从标题栏下方开始）
+  assert.ok(script.includes("flex:none;display:flex;align-items:center;justify-content:space-between"));
+  assert.ok(script.includes("overflow-y:auto"));
+});
+
+test("皮肤弹窗：标题为「选择主题」，applyMode 同步弹窗背景/文字色（深色主题弹窗变深）", () => {
+  const script = build();
+  assert.doesNotThrow(() => new Function(script));
+  assert.ok(script.includes(String.raw`"\u9009\u62e9\u4e3b\u9898"`));
+  // applyMode 内同步弹窗色调（surface 深则弹窗深、文字浅；恢复原生 pin:false 也回白）
+  assert.ok(script.includes('dialog.style.background = "color-mix(in srgb, " + surface + " 94%, transparent)"'));
+  assert.ok(script.includes('dialog.style.color = isLightSurface(surface) ? "#17344f" : "#eef2f8"'));
+  // 卡片/小节/关闭按钮颜色走 currentColor 混合，随弹窗文字色自适应深浅
+  assert.ok(script.includes("color-mix(in srgb, currentColor 5%, transparent)"));
+  assert.ok(script.includes("color-mix(in srgb, currentColor 55%, transparent)"));
+});
+
+test("皮肤弹窗：条目 thumb（theme.json thumbnail）优先作封面，非 data:image 值被丢弃", () => {
+  const thumb = "data:image/webp;base64,QUJD";
+  const script = build({
+    entries: [
+      { ...ENTRIES[0], thumb },
+      { ...ENTRIES[1], thumb: "https://evil.test/x.png" },
+      { id: "qq", name: "QQ", css: "a{}", group: "custom", thumb },
+    ],
+  });
+  assert.doesNotThrow(() => new Function(script));
+  const payload = JSON.parse(script.slice(script.indexOf("const data = ") + 13, script.indexOf(";\n", script.indexOf("const data = "))));
+  assert.deepEqual(payload.themes.map((theme) => theme.thumb), [thumb, null, thumb]);
+  // 定制主题卡用 theme.thumb；图片主题 thumb 优先、hero 提取兜底
+  assert.ok(script.includes("card(theme.name, { thumb: theme.thumb, swatch: swatchOf(theme)"));
+  assert.ok(script.includes("thumb: theme.thumb ?? thumbOf(theme.css)"));
 });

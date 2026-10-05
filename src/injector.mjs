@@ -1,5 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
-import { extname } from "node:path";
+import { extname, isAbsolute, relative, resolve, sep, win32 } from "node:path";
 
 import { CdpSession, fetchRendererTargets, waitForRendererTargets } from "./cdp-client.mjs";
 import { BASE64_DECODE_SNIPPET, IDB_OPEN_SNIPPET, VIDEO_DB_LITERALS } from "./renderer-snippets.mjs";
@@ -20,7 +20,63 @@ const MIME = {
 };
 const { store: VIDEO_STORE } = VIDEO_DB_LITERALS;
 
+// CSS 主题（定制主题移植）资源内联用的扩展 MIME：SVG 走 image/svg+xml
+const CSS_ASSET_MIME = { ...MIME, ".svg": "image/svg+xml" };
+
 const errorText = (error) => (error instanceof Error ? error.message : String(error));
+
+// 与 theme-schema 同规则的目录逃逸检查（那边未导出，这里本地一份，逻辑保持一致）
+function isInsideDir(root, candidate) {
+  const relativePath = relative(root, candidate);
+  return (
+    relativePath !== "" &&
+    relativePath !== ".." &&
+    !relativePath.startsWith(`..${sep}`) &&
+    !isAbsolute(relativePath)
+  );
+}
+
+// 纯 CSS 主题：把 url("./asset") 相对引用重写为 data URL，使注入渲染进程后自包含。
+// 只处理 ./ 开头的相对路径；data:/http(s):/绝对路径天然不匹配该正则，原样保留。
+// 资源必须位于主题目录内；同一引用只读盘一次
+async function inlineCssAssets(css, themeRoot, themeId) {
+  const pattern = /url\(\s*(?:"|')?(\.\/[^"')]+?)(?:"|')?\s*\)/g;
+  const dataUrls = new Map();
+  for (const match of css.matchAll(pattern)) {
+    const ref = match[1];
+    if (dataUrls.has(ref)) continue;
+    const filePath = resolve(themeRoot, ref);
+    if (!isInsideDir(themeRoot, filePath)) {
+      throw new Error(`主题 ${themeId} 的 CSS 资源逃逸主题目录：${ref}`);
+    }
+    const mime = CSS_ASSET_MIME[extname(filePath).toLowerCase()];
+    if (!mime) throw new Error(`主题 ${themeId} 的 CSS 引用了不支持的资源类型：${ref}`);
+    const bytes = await readFile(filePath);
+    dataUrls.set(ref, `url("data:${mime};base64,${bytes.toString("base64")}")`);
+  }
+  return css.replace(pattern, (whole, ref) => dataUrls.get(ref) ?? whole);
+}
+
+// 伴随 JS 里的相对资源引用（"./hero.webp" 等字符串字面量）同样内联为 data URL，
+// 使 js 在渲染进程自包含；与 CSS 内联共用同一套目录逃逸/类型校验
+async function inlineJsAssets(js, themeRoot, themeId) {
+  const pattern = /(["'])(\.{1,2}\/[^"']+\.(?:png|jpe?g|webp|gif|avif|svg|mp4|mp3|wav))\1/g;
+  const dataUrls = new Map();
+  for (const match of js.matchAll(pattern)) {
+    const ref = match[2];
+    if (dataUrls.has(ref)) continue;
+    const filePath = resolve(themeRoot, ref);
+    if (!isInsideDir(themeRoot, filePath)) {
+      throw new Error(`主题 ${themeId} 的 JS 资源逃逸主题目录：${ref}`);
+    }
+    const extension = extname(filePath).toLowerCase();
+    const mime = CSS_ASSET_MIME[extension] ?? { ".mp4": "video/mp4", ".mp3": "audio/mpeg", ".wav": "audio/wav" }[extension];
+    if (!mime) throw new Error(`主题 ${themeId} 的 JS 引用了不支持的资源类型：${ref}`);
+    const bytes = await readFile(filePath);
+    dataUrls.set(ref, `data:${mime};base64,${bytes.toString("base64")}`);
+  }
+  return js.replace(pattern, (whole, quote, ref) => `${quote}${dataUrls.get(ref) ?? ref}${quote}`);
+}
 
 function resolveDeps(deps) {
   return {
@@ -60,7 +116,41 @@ async function evaluateOnPort(port, expression, deps) {
   return evaluateTargets(targets, expression, Session);
 }
 
+// theme.json thumbnail：读为 data URL 随条目下发，弹窗卡片优先用它作封面
+// （体积上限已由 loadTheme 校验）；未配置返回 null
+async function thumbnailDataUrl(loadedTheme) {
+  if (!loadedTheme.thumbnailPath) return null;
+  const mime = MIME[extname(loadedTheme.thumbnailPath).toLowerCase()];
+  if (!mime) throw new Error(`主题 ${loadedTheme.manifest.id} 的 thumbnail 图片类型不受支持`);
+  const bytes = await readFile(loadedTheme.thumbnailPath);
+  return `data:${mime};base64,${bytes.toString("base64")}`;
+}
+
 async function themeEntry(loadedTheme) {
+  const entry = await themeEntryBody(loadedTheme);
+  const thumb = await thumbnailDataUrl(loadedTheme);
+  return thumb ? { ...entry, thumb } : entry;
+}
+
+async function themeEntryBody(loadedTheme) {
+  // 纯 CSS 主题（定制主题移植）：CSS 即皮肤本体，资源内联后直接使用，
+  // 不经过 buildSkinCss 模板；菜单分组标记为 custom（定制主题）
+  if (loadedTheme.cssPath) {
+    const css = await inlineCssAssets(await readFile(loadedTheme.cssPath, "utf8"), loadedTheme.root, loadedTheme.manifest.id);
+    const js = loadedTheme.jsPath
+      ? await inlineJsAssets(await readFile(loadedTheme.jsPath, "utf8"), loadedTheme.root, loadedTheme.manifest.id)
+      : null;
+    return {
+      id: loadedTheme.manifest.id,
+      name: loadedTheme.manifest.name,
+      accent: loadedTheme.manifest.colors?.accent,
+      secondary: loadedTheme.manifest.colors?.secondary,
+      surface: loadedTheme.manifest.colors?.surface,
+      css,
+      group: "custom",
+      ...(js ? { js } : {}),
+    };
+  }
   const extension = extname(loadedTheme.heroPath).toLowerCase();
   const isVideo = extension === ".mp4";
   // 视频主题：CSS 底图用 poster 海报帧（视频体太大不进 CSS，见 syncVideosInSession）
@@ -84,8 +174,10 @@ async function themeEntry(loadedTheme) {
     id: loadedTheme.manifest.id,
     name: loadedTheme.manifest.name,
     accent: loadedTheme.manifest.colors?.accent,
+    secondary: loadedTheme.manifest.colors?.secondary,
     surface: loadedTheme.manifest.colors?.surface,
     css: buildSkinCss({ theme: loadedTheme.manifest, heroDataUrl }) + (isVideo ? VIDEO_LAYER_CSS : ""),
+    group: "image",
     ...(kind ? { kind } : {}),
     ...(isVideo ? { videoPath: loadedTheme.heroPath } : {}),
   };
@@ -309,6 +401,19 @@ export async function activateSavedSkin({ port, id, fallbackId, deps = {} }) {
     if (!api) return false;
     api.applyCustom(${JSON.stringify(id)});
     if (!document.documentElement.dataset.workbuddySkin) api.setTheme(${JSON.stringify(fallbackId)});
+    return true;
+  })()`;
+  const values = await evaluateOnPort(port, expression, deps);
+  return { activated: values.filter(Boolean).length };
+}
+
+// 恢复上次选中的原生浅色/深色（localStorage 值为 native-light/native-dark）：
+// 菜单已按默认主题注入但 activeId=null（未应用任何皮肤），这里只钉明暗模式
+export async function activateSavedNative({ port, mode, deps = {} }) {
+  const expression = `(() => {
+    const api = window.__workbuddySkin;
+    if (!api) return false;
+    api.setNative(${JSON.stringify(mode)});
     return true;
   })()`;
   const values = await evaluateOnPort(port, expression, deps);

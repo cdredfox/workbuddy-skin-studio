@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "qq2008",
+  "name": "QQ 2008",
+  "css": "skin.css",
+  "js": "skin.js",
+  "thumbnail": "thumbnail.webp",
+  "order": -13,
+  "colors": {
+    "accent": "#2D83C6",
+    "secondary": "#8DB8D5",
+    "surface": "#F7FBFE",
+    "text": "#263D50"
+  }
+}

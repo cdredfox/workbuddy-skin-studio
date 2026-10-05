@@ -35,6 +35,11 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       surface: typeof entry.surface === "string" ? entry.surface : "#ffffff",
       css: entry.css,
       kind: entry.kind === "video" || entry.kind === "animated" ? entry.kind : "image",
+      group: entry.group === "custom" ? "custom" : "image",
+      js: typeof entry.js === "string" && entry.js ? entry.js : null,
+      secondary: HEX_COLOR.test(entry.secondary ?? "") ? entry.secondary : null,
+      // theme.json thumbnail 内联后的封面图；仅接受 data:image（防任意 URL 进 <img src>）
+      thumb: typeof entry.thumb === "string" && /^data:image\/[a-z+]+;base64,/i.test(entry.thumb) ? entry.thumb : null,
     };
   });
   if (activeId !== null && !themes.some((theme) => theme.id === activeId)) {
@@ -51,6 +56,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     storageKey: "workbuddyCustomThemes",
     legacyKey: "workbuddyCustomTheme",
     activeKey: "workbuddySkinActive",
+    posKey: "workbuddySkinMenuPos",
     maxCustomSlots: 10,
   });
 
@@ -87,12 +93,46 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   // 与原生按钮恰好相切不重叠；上半段落在 drag 区靠继承的 no-drag 保证可点击
   root.style.cssText = "position:fixed;top:74px;right:7px;z-index:2147483000;font:500 13px/1.4 system-ui;user-select:none;-webkit-app-region:no-drag;app-region:no-drag;";
 
+  // ---- 按钮拖拽定位：默认位置走下方 reposition（锚定原生按钮行）；用户拖拽后
+  // 切换为 left/top 自由定位并持久化到 localStorage（posKey），重新注入/重启后恢复；
+  // 双击按钮复位回默认位置。坐标按视口宽高比例（fx/fy ∈ [0,1]）存储，
+  // 窗口最大化/缩放时按当前视口同比例换算，按钮相对位置随窗口自适应 ----
+  const readPos = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(data.posKey) ?? "null");
+      if (!saved) return null;
+      if (Number.isFinite(saved.fx) && Number.isFinite(saved.fy)) return { fx: saved.fx, fy: saved.fy };
+      // 兼容旧版绝对像素坐标：按当前视口换算成比例
+      if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+        return { fx: saved.x / Math.max(1, window.innerWidth), fy: saved.y / Math.max(1, window.innerHeight) };
+      }
+    } catch {}
+    return null;
+  };
+  const savePos = (pos) => {
+    try {
+      if (pos) localStorage.setItem(data.posKey, JSON.stringify(pos));
+      else localStorage.removeItem(data.posKey);
+    } catch {}
+  };
+  let customPos = readPos();
+  // 比例坐标 → 像素并夹取进视口：拖到屏幕边缘、或窗口变小后，按钮不允许被甩出可视区
+  const applyCustomPos = () => {
+    const x = Math.max(0, Math.min(customPos.fx * window.innerWidth, window.innerWidth - root.offsetWidth));
+    const y = Math.max(0, Math.min(customPos.fy * window.innerHeight, window.innerHeight - root.offsetHeight));
+    root.style.right = "auto";
+    root.style.left = Math.round(x) + "px";
+    root.style.top = Math.round(y) + "px";
+  };
+
   // 水平位置锚定原生按钮行（.workbuddy-topbar-actions）右缘：右侧详情栏打开时
   // 主 topbar 右缘左移，固定 right:7px 会把按钮甩进面板区域；跟随 actions 则始终
   // 停在「第一行按钮下方」。右缘偏移 = 行右缘 + 5px（与既有视觉一致，常态即 right:7px）。
   // actions 不存在时回落视口右缘 7px。仅调 right，root 始终挂 body，无挂载生命周期问题
   let cachedRight = null;
   const reposition = () => {
+    // 用户拖过按钮：改用自由定位，按视口比例换算并夹取（resize 也会走到这里）
+    if (customPos) { applyCustomPos(); return; }
     let next = 7;
     const actions = document.querySelector(".workbuddy-topbar-actions");
     if (actions) {
@@ -120,44 +160,133 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   // 仍挂到 window：回退到旧版本注入时，旧脚本据此断开本轮观察者
   window.__workbuddySkinLayoutObserver = layoutObserver;
   window.addEventListener("resize", scheduleReposition);
+  // 窗口尺寸变化会移动内容列右缘，定位按钮需一并重算：resize 监听在 scheduleNavUpdate
+  // 声明之后注册（见下方导航区），此处直接传引用会踩 TDZ
   reposition();
   // actions 行可能晚于本脚本挂载，下一帧再校准一次
   scheduleReposition();
 
+  // 复位默认位置：清除持久化坐标，交还 right 锚定逻辑；cachedRight 置空强制重算
+  const resetPos = () => {
+    customPos = null;
+    savePos(null);
+    root.style.left = "auto";
+    root.style.top = "74px";
+    cachedRight = null;
+    reposition();
+  };
+
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = "\\u{1F3A8}";
-  button.title = "WorkBuddy Skin Studio";
-  // 无底图：去掉圆底/描边/阴影/磨砂，只留色盘图标本体；line-height 保证垂直居中
-  button.style.cssText = "display:block;margin-left:auto;width:38px;height:38px;border:0;background:transparent;cursor:pointer;font-size:19px;padding:0;line-height:38px;";
+  button.title = "WorkBuddy Skin Studio\\uff08\\u62d6\\u62fd\\u79fb\\u52a8\\uff0c\\u53cc\\u51fb\\u590d\\u4f4d\\uff09";
+  // 无底图：去掉圆底/描边/阴影/磨砂，只留色盘图标本体；line-height 保证垂直居中；
+  // cursor:grab + touch-action:none 服务拖拽（触屏拖时不滚页面）
+  button.style.cssText = "display:block;margin-left:auto;width:38px;height:38px;border:0;background:transparent;cursor:grab;font-size:19px;padding:0;line-height:38px;touch-action:none;";
 
-  const panel = document.createElement("div");
-  // absolute 相对 root 定位：挂进工具栏时面板从按钮正下方展开，且不再撑大 root
-  panel.style.cssText = "display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:200px;padding:6px;border-radius:12px;border:1px solid rgba(0,0,0,.1);background:rgba(255,255,255,.94);backdrop-filter:blur(16px);box-shadow:0 10px 30px rgba(0,0,0,.18);color:#17344f;-webkit-app-region:no-drag;app-region:no-drag;";
+  // 拖拽移动：pointer capture 保证指针移出按钮后事件仍落在按钮上（沿途经过 topbar
+  // 拖拽区/其他元素都不影响）；5px 位移阈值区分点击与拖拽，拖拽结束时抑制随之而来的
+  // click 避免误开弹窗；双击复位默认位置（两次 click 一开一关相互抵消，弹窗状态不变）
+  let dragState = null;
+  let suppressClick = false;
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const rect = root.getBoundingClientRect();
+    dragState = { startX: event.clientX, startY: event.clientY, baseX: rect.left, baseY: rect.top, moved: false };
+    try { button.setPointerCapture(event.pointerId); } catch {}
+  });
+  button.addEventListener("pointermove", (event) => {
+    if (!dragState) return;
+    const dx = event.clientX - dragState.startX;
+    const dy = event.clientY - dragState.startY;
+    if (!dragState.moved && Math.hypot(dx, dy) < 5) return;
+    dragState.moved = true;
+    button.style.cursor = "grabbing";
+    // 存视口比例而非绝对像素：窗口最大化/缩放后仍保持相同的相对位置
+    customPos = {
+      fx: (dragState.baseX + dx) / Math.max(1, window.innerWidth),
+      fy: (dragState.baseY + dy) / Math.max(1, window.innerHeight),
+    };
+    applyCustomPos();
+  });
+  const endDrag = () => {
+    if (!dragState) return;
+    if (dragState.moved) { savePos(customPos); suppressClick = true; }
+    dragState = null;
+    button.style.cursor = "grab";
+  };
+  button.addEventListener("pointerup", endDrag);
+  button.addEventListener("pointercancel", endDrag);
+  button.addEventListener("dblclick", () => { suppressClick = true; resetPos(); });
+
+  // 主题选择弹窗：遮罩 + 居中对话框，按分类网格陈列缩略图卡片。
+  // 弹窗挂 root 内（root 无 transform/filter，fixed 仍相对视口），随 root 一并 teardown。
+  // 结构：header 固定不滚 + body 独立滚动（滚动条从标题栏下方开始）；
+  // 背景/文字色跟随当前主题 surface/text（applyMode 时同步更新，见 updateDialogTone）
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "display:none;position:fixed;inset:0;z-index:2147483001;background:rgba(15,20,35,.42);backdrop-filter:blur(6px);align-items:center;justify-content:center;-webkit-app-region:no-drag;app-region:no-drag;";
+  const dialog = document.createElement("div");
+  dialog.style.cssText = "width:min(760px,92vw);max-height:82vh;display:flex;flex-direction:column;overflow:hidden;border-radius:16px;border:1px solid color-mix(in srgb, currentColor 12%, transparent);background:rgba(255,255,255,.96);backdrop-filter:blur(20px);box-shadow:0 24px 60px rgba(0,0,0,.28);color:#17344f;";
+  const dialogBody = document.createElement("div");
+  dialogBody.style.cssText = "overflow-y:auto;padding:12px 20px 20px;scrollbar-width:thin;scrollbar-color:rgba(128,128,128,.45) transparent;";
+  overlay.appendChild(dialog);
+
+  const closeDialog = () => { overlay.style.display = "none"; };
+  const openDialog = () => { overlay.style.display = "flex"; };
+  overlay.addEventListener("mousedown", (event) => { if (event.target === overlay) closeDialog(); });
+  const onEscKey = (event) => {
+    if (event.key === "Escape" && overlay.style.display !== "none") {
+      event.stopPropagation();
+      closeDialog();
+    }
+  };
+  document.addEventListener("keydown", onEscKey, true);
 
   const rows = new Map();
   const paint = (id) => {
     for (const [rowId, row] of rows) {
-      row.style.background = rowId === id ? "rgba(36,201,215,.16)" : "transparent";
-      row.style.fontWeight = rowId === id ? "700" : "500";
+      const active = rowId === id;
+      row.style.borderColor = active ? "rgba(36,201,215,.9)" : "transparent";
+      row.style.background = active ? "rgba(36,201,215,.10)" : "color-mix(in srgb, currentColor 5%, transparent)";
+      const label = row.lastElementChild;
+      if (label) label.style.fontWeight = active ? "700" : "500";
     }
   };
-  const row = (label, dotColor, onPick, before) => {
+  // 缩略图卡片：thumb 为 data URL 时以 <img> 元素作封面（属性通道不受 Blink 对超长
+  // data URL CSS 声明的静默丢弃限制，内置大 hero 与动图都能正常显示），否则用
+  // swatch 渐变兜底（定制/原生主题）
+  const card = (label, { thumb = null, swatch = "rgba(0,0,0,.08)", onPick, before = null, parent }) => {
     const item = document.createElement("div");
-    item.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;";
-    const dot = document.createElement("span");
-    dot.style.cssText = "width:10px;height:10px;border-radius:50%;flex:none;background:" + dotColor + ";";
-    const text = document.createElement("span");
-    text.textContent = label;
-    item.append(dot, text);
-    item.addEventListener("mouseenter", () => { if (item.style.fontWeight !== "700") item.style.background = "rgba(0,0,0,.05)"; });
+    item.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;cursor:pointer;border:2px solid transparent;background:color-mix(in srgb, currentColor 5%, transparent);box-sizing:border-box;";
+    const preview = document.createElement("div");
+    preview.style.cssText = "position:relative;width:100%;aspect-ratio:16/10;border-radius:8px;background:" + swatch + ";overflow:hidden;";
+    if (thumb) {
+      const img = document.createElement("img");
+      img.src = thumb;
+      img.alt = "";
+      img.draggable = false;
+      img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;";
+      preview.appendChild(img);
+    }
+    const name = document.createElement("div");
+    name.textContent = label;
+    name.style.cssText = "font-size:12px;line-height:18px;font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+    item.append(preview, name);
+    item.addEventListener("mouseenter", () => { if (item.style.borderColor === "transparent") item.style.borderColor = "rgba(36,201,215,.45)"; });
     item.addEventListener("mouseleave", () => paint(document.documentElement.dataset.workbuddySkin ?? null));
     // 兜底：onPick（切换/上传入口）任何同步异常都不允许打断菜单，统一落日志
     item.addEventListener("click", () => {
       try { onPick(item); } catch (error) { logError("主题列表项点击处理失败", label, error); }
     });
-    if (before) panel.insertBefore(item, before); else panel.appendChild(item);
+    if (before) parent.insertBefore(item, before); else parent.appendChild(item);
     return item;
+  };
+  // 从条目 CSS 中提取首个内联图片作缩略图（hero/poster 均为 data URL，零额外负载）。
+  // 注意：本段位于模板字面量内，反斜杠转义会被吃掉——\/ 变 / 提前终结正则，
+  // \( \) 变成裸括号（分组）导致对 url("data:...") 永远匹配失败。斜杠/括号一律走字符类
+  const thumbOf = (css) => {
+    const match = /url[(]"?(data:image[/][a-z+]+;base64,[^")]+)"?[)]/i.exec(css);
+    return match ? match[1] : null;
   };
 
   const isLightSurface = (hex) => {
@@ -207,6 +336,9 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   });
   const applyMode = (surface, { pin = true } = {}) => {
     modeObserver.disconnect();
+    // 弹窗背景/文字色与当前主题一致（恢复原生时回到白色默认）
+    dialog.style.background = "color-mix(in srgb, " + surface + " 94%, transparent)";
+    dialog.style.color = isLightSurface(surface) ? "#17344f" : "#eef2f8";
     if (!pin) {
       // 恢复原生：解除钉住，类与属性的所有权还给应用
       pinnedDark = null;
@@ -227,6 +359,27 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       else localStorage.removeItem(data.activeKey);
     } catch {}
   };
+  // 主题伴随 JS（如 TDP 英雄层 DOM 注入）：约定 js 文本作为函数体执行，
+  // 返回值若是函数则作为拆除回调（切换/暂停/重复注入时调用）。
+  // 页面 CSP 若禁 eval（new Function 抛错）只记警告，CSS 皮肤本体不受影响
+  let activeJsTeardown = null;
+  const teardownThemeJs = () => {
+    const teardown = activeJsTeardown;
+    activeJsTeardown = null;
+    if (typeof teardown === "function") {
+      try { teardown(); } catch (error) { logError("拆除主题 JS 失败", null, error); }
+    }
+  };
+  const runThemeJs = (theme) => {
+    teardownThemeJs();
+    if (!theme.js) return;
+    try {
+      const result = new Function(theme.js)();
+      activeJsTeardown = typeof result === "function" ? result : null;
+    } catch (error) {
+      logError("执行主题 JS 失败", theme.id, error);
+    }
+  };
   const setTheme = (id) => {
     const theme = data.themes.find((candidate) => candidate.id === id);
     if (!theme) {
@@ -244,12 +397,15 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       // 普通图片主题则释放上一个视频层
       if (theme.kind === "video") mountVideo(theme);
       else releaseVideo();
+      // 伴随 JS 最后执行：CSS 与明暗钉住已就位，DOM 注入直接落在最终样式环境里
+      runThemeJs(theme);
     } catch (error) {
       logError("切换主题失败", id, error);
     }
   };
   const clearTheme = () => {
     try {
+      teardownThemeJs();
       releaseHeroBlob();
       releaseVideo();
       style.textContent = "";
@@ -262,26 +418,110 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       logError("恢复原生界面失败", null, error);
     }
   };
-
-  // 视频/动图主题在列表行尾加标注（汉字走双反斜杠 unicode 转义，模板内不直接写中文）
-  const KIND_BADGE = { video: "\\u52a8\\u6001", animated: "\\u52a8\\u56fe" };
-  const kindBadge = (kind) => {
-    const label = KIND_BADGE[kind];
-    if (!label) return null;
-    const tag = document.createElement("span");
-    tag.textContent = label;
-    tag.style.cssText = "flex:none;margin-left:auto;font-size:10px;line-height:14px;padding:0 4px;border-radius:4px;border:1px solid rgba(0,0,0,.18);color:rgba(0,0,0,.5);";
-    return tag;
+  // 原生浅色/深色：清空皮肤 CSS，但把明暗钉在指定模式（区别于 clearTheme 的完全交还应用）。
+  // 持久化为 native-light/native-dark，重新 apply 时据此恢复（见 cli 的 savedNative 分支）
+  const setNative = (mode) => {
+    const id = mode === "dark" ? "native-dark" : "native-light";
+    try {
+      teardownThemeJs();
+      releaseHeroBlob();
+      releaseVideo();
+      style.textContent = "";
+      delete document.documentElement.dataset.workbuddySkin;
+      applyMode(mode === "dark" ? "#101418" : "#ffffff");
+      persistActive(id);
+      paint(id);
+    } catch (error) {
+      logError("切换原生界面失败", id, error);
+    }
   };
 
-  for (const theme of data.themes) {
-    const item = row(theme.name, theme.accent, () => { setTheme(theme.id); panel.style.display = "none"; });
-    const badge = kindBadge(theme.kind);
-    if (badge) item.appendChild(badge);
-    rows.set(theme.id, item);
+  // 视频/动图主题在卡片缩略图左上角加闪电角标（feather zap 内联 SVG，stroke=currentColor）
+  const attachBadge = (item, kind) => {
+    if (kind !== "video" && kind !== "animated") return;
+    const tag = document.createElement("span");
+    tag.style.cssText = "position:absolute;left:6px;top:6px;width:16px;height:16px;color:#ffd54a;box-sizing:border-box;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));";
+    tag.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    item.firstElementChild.appendChild(tag);
+  };
+
+  // 弹窗标题栏：固定不滚（滚动条从其下方的 body 开始），颜色跟随弹窗主题色
+  const header = document.createElement("div");
+  header.style.cssText = "flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid color-mix(in srgb, currentColor 10%, transparent);";
+  const titleEl = document.createElement("div");
+  titleEl.textContent = "\\u9009\\u62e9\\u4e3b\\u9898";
+  titleEl.style.cssText = "font-size:15px;font-weight:700;";
+  const closeBtn = document.createElement("span");
+  closeBtn.textContent = "\\u00d7";
+  closeBtn.title = "\\u5173\\u95ed";
+  closeBtn.style.cssText = "width:26px;height:26px;line-height:24px;text-align:center;border-radius:8px;font-size:16px;color:color-mix(in srgb, currentColor 60%, transparent);cursor:pointer;";
+  closeBtn.addEventListener("mouseenter", () => { closeBtn.style.background = "color-mix(in srgb, currentColor 8%, transparent)"; });
+  closeBtn.addEventListener("mouseleave", () => { closeBtn.style.background = "transparent"; });
+  closeBtn.addEventListener("click", closeDialog);
+  header.append(titleEl, closeBtn);
+  dialog.append(header, dialogBody);
+
+  // 分类小节：标题行（extra 挂槽位计数等附加信息）+ 卡片网格，挂进滚动 body
+  const section = (label) => {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "margin-top:10px;";
+    const head = document.createElement("div");
+    head.style.cssText = "display:flex;align-items:baseline;justify-content:space-between;padding:2px 2px 6px;";
+    const text = document.createElement("span");
+    text.textContent = label;
+    text.style.cssText = "font-size:12px;font-weight:600;color:color-mix(in srgb, currentColor 55%, transparent);";
+    const extra = document.createElement("span");
+    extra.style.cssText = "font-size:11px;color:color-mix(in srgb, currentColor 45%, transparent);";
+    head.append(text, extra);
+    const grid = document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;";
+    wrap.append(head, grid);
+    dialogBody.appendChild(wrap);
+    return { grid, extra };
+  };
+  const swatchOf = (theme) => "linear-gradient(135deg," + theme.accent + "," + (theme.secondary ?? theme.accent) + ")";
+
+  // 原生主题：浅色/深色两张色块卡，分别钉住明暗模式
+  const nativeSection = section("\\u539f\\u751f\\u4e3b\\u9898");
+  const nativeLight = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6d45\\u8272", { swatch: "linear-gradient(135deg,#ffffff,#dde6f0)", onPick: () => { setNative("light"); closeDialog(); }, parent: nativeSection.grid });
+  rows.set("native-light", nativeLight);
+  const nativeDark = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6df1\\u8272", { swatch: "linear-gradient(135deg,#262b36,#101318)", onPick: () => { setNative("dark"); closeDialog(); }, parent: nativeSection.grid });
+  rows.set("native-dark", nativeDark);
+
+  // 定制主题（纯 CSS 皮肤，无 hero 底图）：theme.json thumbnail 作封面，
+  // 未配置时 accent→secondary 渐变色块兜底
+  const customBuiltins = data.themes.filter((theme) => theme.group === "custom");
+  if (customBuiltins.length > 0) {
+    const customSection = section("\\u5b9a\\u5236\\u4e3b\\u9898");
+    for (const theme of customBuiltins) {
+      const item = card(theme.name, { thumb: theme.thumb, swatch: swatchOf(theme), onPick: () => { setTheme(theme.id); closeDialog(); }, parent: customSection.grid });
+      attachBadge(item, theme.kind);
+      rows.set(theme.id, item);
+    }
+  }
+
+  // 图片/视频主题：theme.json thumbnail 优先，否则从条目 CSS 提取首个内联图（hero/poster）
+  const imageThemes = data.themes.filter((theme) => theme.group !== "custom");
+  if (imageThemes.length > 0) {
+    const imageSection = section("\\u56fe\\u7247\\u4e3b\\u9898");
+    for (const theme of imageThemes) {
+      const item = card(theme.name, { thumb: theme.thumb ?? thumbOf(theme.css), swatch: swatchOf(theme), onPick: () => { setTheme(theme.id); closeDialog(); }, parent: imageSection.grid });
+      attachBadge(item, theme.kind);
+      rows.set(theme.id, item);
+    }
   }
 
   // ---- 自定义皮肤：本地选图/选视频 -> 压缩 -> 取色 -> 生成 CSS -> 持久化（多槽位） ----
+  // 自定义主题单独分类小节，标题行右侧显示槽位占用（x/n）
+  const customsSection = section("\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898\\uff08\\u53ef\\u5207\\u6362\\u660e\\u6697\\u4e3b\\u8272\\uff09");
+  // updateSlots 同时负责上传卡显隐：uploadCard 是下方才声明的 const，但本函数首次调用
+  // （初始化/增删皮肤）都发生在 uploadCard 声明之后，不存在 TDZ 问题
+  const updateSlots = () => {
+    const count = loadCustoms().length;
+    customsSection.extra.textContent = "\\u69fd\\u4f4d " + count + "/" + data.maxCustomSlots;
+    // 槽位满时隐藏新增入口（点击也只会弹已满提示）；删除皮肤后自动恢复显示
+    uploadCard.style.display = count >= data.maxCustomSlots ? "none" : "";
+  };
   // hero 放最后替换：它可能是数 MB 的 data URL，先替换会让后续 5 轮 split 都扫一遍大串
   const buildCustomCss = (heroUrl, colors, themeId) => data.cssTemplate
     .split(data.sentinels.accent).join(colors.accent)
@@ -533,25 +773,30 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     videoStore.del(id).catch(() => {});
     rows.get(id)?.remove();
     rows.delete(id);
+    updateSlots();
   };
   const ensureCustomRow = (theme) => {
     if (rows.has(theme.id)) return;
-    const customRow = row(theme.name, theme.colors.accent, () => {
-      applyCustomTheme(loadCustoms().find((saved) => saved.id === theme.id) ?? theme);
-      panel.style.display = "none";
-    }, uploadRow);
-    const text = customRow.querySelector("span + span");
-    text.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
-    // 自定义视频/动图主题同样加标注（text 已 flex:1，badge 的 margin-left:auto 无副作用）
-    const badge = kindBadge(theme.kind);
-    if (badge) customRow.appendChild(badge);
+    const customCard = card(theme.name, {
+      thumb: theme.kind === "video" ? theme.poster : theme.dataUrl,
+      swatch: "linear-gradient(135deg," + theme.colors.accent + "," + theme.colors.secondary + ")",
+      onPick: () => {
+        applyCustomTheme(loadCustoms().find((saved) => saved.id === theme.id) ?? theme);
+        closeDialog();
+      },
+      before: uploadCard,
+      parent: customsSection.grid,
+    });
+    const preview = customCard.firstElementChild;
+    // 自定义视频/动图主题同样加标注（缩略图右下角）
+    attachBadge(customCard, theme.kind);
     // 明暗模式三选：自（自动按主色亮度）→ 浅 → 深 循环，持久化；正应用此主题时立即重渲染
     const MODE_SEQUENCE = ["auto", "light", "dark"];
     const MODE_LABEL = { auto: "\\u81ea", light: "\\u6d45", dark: "\\u6df1" };
     const MODE_TITLE = { auto: "\\u81ea\\u52a8\\uff08\\u6309\\u4e3b\\u8272\\u660e\\u6697\\uff09", light: "\\u6d45\\u8272", dark: "\\u6df1\\u8272" };
     const currentMode = () => (theme.mode === "light" || theme.mode === "dark" ? theme.mode : "auto");
     const modeBtn = document.createElement("span");
-    modeBtn.style.cssText = "flex:none;min-width:18px;height:18px;line-height:17px;text-align:center;border-radius:5px;color:rgba(0,0,0,.55);font-size:11px;border:1px solid rgba(0,0,0,.2);cursor:pointer;padding:0 2px;box-sizing:border-box;";
+    modeBtn.style.cssText = "position:absolute;left:6px;bottom:6px;min-width:20px;height:20px;line-height:19px;text-align:center;border-radius:6px;color:rgba(0,0,0,.6);font-size:11px;background:rgba(255,255,255,.88);cursor:pointer;padding:0 3px;box-sizing:border-box;";
     const refreshModeBtn = () => {
       modeBtn.textContent = MODE_LABEL[currentMode()];
       modeBtn.title = "\\u660e\\u6697\\u6a21\\u5f0f\\uff1a" + MODE_TITLE[currentMode()] + "\\uff08\\u70b9\\u51fb\\u5207\\u6362\\uff09";
@@ -566,16 +811,18 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
         applyCustomTheme(loadCustoms().find((saved) => saved.id === theme.id) ?? theme);
       }
     });
-    customRow.appendChild(modeBtn);
+    preview.appendChild(modeBtn);
     const del = document.createElement("span");
-    del.textContent = "\\u00d7";
+    // 垃圾桶删除图标（feather trash-2 内联 SVG，颜色跟随 currentColor 便于悬停反白）
+    del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
     del.title = "\\u5220\\u9664\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898";
-    del.style.cssText = "flex:none;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;color:rgba(0,0,0,.45);font-size:14px;";
-    del.addEventListener("mouseenter", () => { del.style.background = "rgba(220,60,60,.15)"; del.style.color = "#c03030"; });
-    del.addEventListener("mouseleave", () => { del.style.background = "transparent"; del.style.color = "rgba(0,0,0,.45)"; });
+    del.style.cssText = "position:absolute;right:6px;top:6px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:rgba(0,0,0,.55);background:rgba(255,255,255,.88);box-sizing:border-box;";
+    del.addEventListener("mouseenter", () => { del.style.background = "rgba(220,60,60,.9)"; del.style.color = "#ffffff"; });
+    del.addEventListener("mouseleave", () => { del.style.background = "rgba(255,255,255,.88)"; del.style.color = "rgba(0,0,0,.55)"; });
     del.addEventListener("click", (event) => { event.stopPropagation(); deleteCustom(theme.id); });
-    customRow.appendChild(del);
-    rows.set(theme.id, customRow);
+    preview.appendChild(del);
+    rows.set(theme.id, customCard);
+    updateSlots();
   };
 
   // ---- 动图支持：GIF / 动态 WebP 跳过 canvas 重编码，原数据直接注入 CSS 以保留动画 ----
@@ -763,28 +1010,29 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       reader.readAsDataURL(file);
     }
     picker.value = "";
-    panel.style.display = "none";
+    closeDialog();
   });
 
-  const uploadRow = row("\\uff0b \\u81ea\\u5b9a\\u4e49\\u76ae\\u80a4", "rgba(36,201,215,.9)", () => picker.click());
-  uploadRow.style.borderTop = "1px solid rgba(0,0,0,.08)";
-
-  const native = row("\\u539f\\u751f\\u754c\\u9762", "rgba(0,0,0,.24)", () => { clearTheme(); panel.style.display = "none"; });
-  rows.set(null, native);
+  // 上传卡：虚线占位卡，永远在自定义网格末尾；新皮肤卡插到它前面
+  const uploadCard = card("\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898", { swatch: "transparent", onPick: () => picker.click(), parent: customsSection.grid });
+  uploadCard.style.borderStyle = "dashed";
+  uploadCard.style.borderColor = "color-mix(in srgb, currentColor 30%, transparent)";
+  uploadCard.addEventListener("mouseenter", () => { uploadCard.style.borderColor = "rgba(36,201,215,.9)"; });
+  uploadCard.addEventListener("mouseleave", () => { uploadCard.style.borderColor = "color-mix(in srgb, currentColor 30%, transparent)"; });
+  const plus = document.createElement("div");
+  plus.textContent = "\\uff0b";
+  plus.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;color:color-mix(in srgb, currentColor 45%, transparent);";
+  uploadCard.firstElementChild.appendChild(plus);
 
   for (const saved of loadCustoms()) ensureCustomRow(saved);
+  updateSlots();
 
   button.addEventListener("click", () => {
-    panel.style.display = panel.style.display === "none" ? "block" : "none";
+    // 拖拽/双击结束后会尾随一个 click，吞掉它避免误开弹窗
+    if (suppressClick) { suppressClick = false; return; }
+    if (overlay.style.display === "none") openDialog();
+    else closeDialog();
   });
-
-  // 点击弹窗外部自动收起：capture 阶段监听，即使页面组件 stopPropagation 也能收到；
-  // root 涵盖按钮/面板/文件选择器，点击其内部不关闭
-  const onOutsideMouseDown = (event) => {
-    if (panel.style.display === "none") return;
-    if (!root.contains(event.target)) panel.style.display = "none";
-  };
-  document.addEventListener("mousedown", onOutsideMouseDown, true);
 
   // ---- 右侧定位按钮：回到顶部 / 上一个提问 / 下一个提问 / 回到底部 ----
   // 参考 .workbuddy-themes 运行时的滚动按钮实现移植：WorkBuddy 未暴露稳定的会话
@@ -792,6 +1040,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   // 高度≥200 + 面积最大」挑选并缓存 500ms；提问锚点优先 data-role/class 启发式
   // （剔除嵌套命中、排除 assistant/bot 类名），兜底取容器最高子节点的直接子项
   const navRoot = document.createElement("div");
+  // 位置锚定对话框（见 updateNavPlacement），right/bottom 初始值为探测失败时的兜底
   navRoot.style.cssText = "position:fixed;right:14px;bottom:96px;z-index:2147483000;display:none;flex-direction:column;align-items:center;gap:8px;user-select:none;-webkit-app-region:no-drag;app-region:no-drag;";
 
   let scrollBox = null;
@@ -923,11 +1172,65 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   );
   document.body.appendChild(navRoot);
 
-  // 显隐：容器可滚才显示；scroll 捕获监听 + layoutObserver（见上）双路驱动，均按 rAF 合帧
+  // 边界灰化：已在顶部时「回到顶部/上一个提问」无意义（上方没有更早的提问），
+  // 底部同理；用 disabled 置灰（同时阻断点击），随滚动实时刷新
+  const [navBtnTop, navBtnPrev, navBtnNext, navBtnBottom] = navRoot.children;
+  const setNavEnabled = (btn, enabled) => {
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? "1" : ".38";
+    btn.style.cursor = enabled ? "pointer" : "default";
+  };
+  const updateNavEdges = (box) => {
+    const max = Math.max(0, box.scrollHeight - box.clientHeight);
+    const atTop = box.scrollTop <= NAV_TOLERANCE;
+    const atBottom = box.scrollTop >= max - NAV_TOLERANCE;
+    setNavEnabled(navBtnTop, !atTop);
+    setNavEnabled(navBtnPrev, !atTop);
+    setNavEnabled(navBtnNext, !atBottom);
+    setNavEnabled(navBtnBottom, !atBottom);
+  };
+
+  // 显隐与定位：容器可滚才显示；scroll 捕获监听 + layoutObserver（见上）双路驱动，均按
+  // rAF 合帧。位置锚定对话框（输入框）上方右侧——内容列会随消息布局漂移，输入框是
+  // 会话页最稳定的地标；底边固定在输入框顶上方 12px，右缘与输入框右缘外侧 6px 对齐
+  const findComposer = () => {
+    let best = null;
+    let bestWidth = 0;
+    const viewportHeight = window.innerHeight || 800;
+    for (const el of document.querySelectorAll("textarea,[contenteditable=true],[contenteditable=''],[class*=composer],[class*=chat-input],[class*=input-area]")) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 200 || r.height < 20) continue;
+      if (r.top < viewportHeight * 0.4) continue; // 输入框应在视口下半部
+      if (r.width > bestWidth) { bestWidth = r.width; best = r; }
+    }
+    return best;
+  };
+  const updateNavPlacement = () => {
+    const composer = findComposer();
+    if (!composer) {
+      navRoot.style.right = "14px";
+      navRoot.style.bottom = "96px";
+      return;
+    }
+    navRoot.style.right = Math.max(-6, Math.round(window.innerWidth - composer.right - 6)) + "px";
+    const bottom = Math.round(window.innerHeight - composer.top + 12);
+    // 上下限：不低于 8px（输入框贴底时），不高于视口高减菜单高（异常布局时防出顶）
+    navRoot.style.bottom = Math.min(Math.max(8, bottom), window.innerHeight - 160) + "px";
+  };
   let navUpdateQueued = false;
   const updateNavVisibility = () => {
+    // 主页（欢迎页）不显示：欢迎区内容列可滚，会被 findScrollBox 兜底扫描误命中。
+    // 反向门控——按主页地标（标题头/主页容器/空会话占位）判定，进入会话后这些节点消失
+    if (document.querySelector(".wb-home-page,.wb-home-header,.colleague-chat-empty-profile")) {
+      navRoot.style.display = "none";
+      return;
+    }
     const box = findScrollBox();
     const show = !!box && box.scrollHeight > box.clientHeight + 20;
+    if (show) {
+      updateNavPlacement();
+      updateNavEdges(box);
+    }
     navRoot.style.display = show ? "flex" : "none";
   };
   const scheduleNavUpdate = () => {
@@ -936,6 +1239,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     requestAnimationFrame(() => { navUpdateQueued = false; updateNavVisibility(); });
   };
   document.addEventListener("scroll", scheduleNavUpdate, true);
+  window.addEventListener("resize", scheduleNavUpdate);
   // 用户滚轮/触摸滚动时取消进行中的定位动画，避免与动画抢滚动条
   document.addEventListener("wheel", cancelNavAnim, true);
   document.addEventListener("touchstart", cancelNavAnim, true);
@@ -953,12 +1257,14 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     pinnedDark = null;
     cancelNavAnim();
     window.removeEventListener("resize", scheduleReposition);
+    window.removeEventListener("resize", scheduleNavUpdate);
     window.removeEventListener("storage", onStorage);
-    document.removeEventListener("mousedown", onOutsideMouseDown, true);
+    document.removeEventListener("keydown", onEscKey, true);
     document.removeEventListener("scroll", scheduleNavUpdate, true);
     document.removeEventListener("wheel", cancelNavAnim, true);
     document.removeEventListener("touchstart", cancelNavAnim, true);
     navRoot.remove();
+    teardownThemeJs();
     releaseVideo();
     releaseHeroBlob();
     for (const url of videoUrlCache.values()) URL.revokeObjectURL(url);
@@ -971,8 +1277,10 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     delete window[${JSON.stringify(TEARDOWN_GLOBAL)}];
   };
 
-  root.append(button, panel, picker);
+  root.append(button, overlay, picker);
   document.body.appendChild(root);
+  // 挂载后 offsetWidth 才有效：持久化坐标此时再做一次真实尺寸的视口夹取
+  if (customPos) applyCustomPos();
 
   // 自愈重挂：Slate/React 整树重建（路由切换、流式渲染根替换等）可能把挂在 body
   // 末尾的菜单根节点或 head 里的 <style> 一并移除，表现为「主题/按钮突然消失」。
@@ -994,7 +1302,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
 
   // 供脚本化调用与测试：window.__workbuddySkin.importFromDataUrl(dataUrl, name)
   window.__workbuddySkin = {
-    importFromDataUrl, importFromVideoFile, setTheme, clearTheme, deleteCustom, listCustoms: loadCustoms,
+    importFromDataUrl, importFromVideoFile, setTheme, clearTheme, setNative, deleteCustom, listCustoms: loadCustoms,
     applyCustom: (id) => { const saved = loadCustoms().find((theme) => theme.id === id); if (saved) applyCustomTheme(saved); },
   };
   return true;

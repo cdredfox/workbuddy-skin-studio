@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { DEFAULT_CDP_PORT, DEFAULT_THEME_ID, EXPECTED_BUNDLE_ID, RENDERER_URL_HINT, resolveStudioPaths } from "./constants.mjs";
-import { applySkin, removeSkin, skinStatus, readSavedActiveSkin, activateSavedSkin } from "./injector.mjs";
+import { applySkin, removeSkin, skinStatus, readSavedActiveSkin, activateSavedSkin, activateSavedNative } from "./injector.mjs";
 import { readState, writeState } from "./state-store.mjs";
 import { loadTheme } from "./theme-schema.mjs";
 import { createSingleImageTheme, listThemes } from "./theme-store.mjs";
@@ -44,6 +44,7 @@ function defaults(overrides) {
     skinStatus,
     readSavedActiveSkin,
     activateSavedSkin,
+    activateSavedNative,
     readStateFile: readState,
     writeStateFile: writeState,
     startWatch,
@@ -162,6 +163,7 @@ async function applyCommand(deps, roots, args, port) {
   {
     let themeId = args.theme;
     let savedCustomId = null;
+    let savedNativeMode = null;
     let activeId;
     // 读取上次皮肤（CDP 往返）与扫描主题目录（磁盘）互不依赖，并发
     const [saved, themes] = await Promise.all([
@@ -171,11 +173,16 @@ async function applyCommand(deps, roots, args, port) {
     if (!themeId) {
       // 未指定主题：恢复上次使用的皮肤（菜单切换时已持久化到渲染进程 localStorage）；
       // 是自定义皮肤则先按默认主题注入菜单（activeId=null），再激活自定义皮肤；
+      // 原生浅色/深色同理：注入后不应用皮肤，只钉明暗模式；
       // 没有记录或读取失败则回退默认主题
       if (saved && saved.startsWith("custom-")) {
         themeId = DEFAULT_THEME_ID;
         activeId = null;
         savedCustomId = saved;
+      } else if (saved === "native-light" || saved === "native-dark") {
+        themeId = DEFAULT_THEME_ID;
+        activeId = null;
+        savedNativeMode = saved === "native-dark" ? "dark" : "light";
       } else {
         themeId = saved ?? DEFAULT_THEME_ID;
       }
@@ -199,6 +206,11 @@ async function applyCommand(deps, roots, args, port) {
     if (savedCustomId) {
       await deps.activateSavedSkin({ port, id: savedCustomId, fallbackId: themeId });
       result.themeId = savedCustomId;
+      result.restored = true;
+    }
+    if (savedNativeMode) {
+      await deps.activateSavedNative({ port, mode: savedNativeMode });
+      result.themeId = savedNativeMode === "dark" ? "native-dark" : "native-light";
       result.restored = true;
     }
     await recordState(deps, {

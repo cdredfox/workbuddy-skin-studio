@@ -62,6 +62,9 @@ No official files are touched.
    Expect an injected/active state and the WorkBuddy renderer listed.
 3. A 🎨 button appears at the top-right of WorkBuddy. Tell the user they can
    switch themes, upload a custom image, or revert to native from that menu.
+  The button is draggable (position persists across restarts as viewport
+  fractions, so it keeps its relative spot on maximize/resize; double-click
+  resets it to the default top-right spot).
 
 ## Workflow — Windows
 
@@ -99,9 +102,15 @@ No official files are touched.
 - Built-ins include `miku-light`, `genshin-dawn`, `genshin-night`,
   `deepspace-dawn`, `deepspace-star`, `naruto-hokage`, `naruto-sasuke`,
   `wuthering-echo`, `wuthering-tide`, `mice-cat`, `beach-night`, `cutie`,
-  `misty-fir-rain`, `moonlit-night`, `snow-animals`.
+  `misty-fir-rain`, `moonlit-night`, `snow-animals`, plus three full-page CSS
+  themes: `qq2008` (QQ 2008), `tdp-pro` / `tdp-pro-dark` (Tencent Cloud TDP,
+  light / dark). CSS themes appear under the "定制主题" group in the 🎨 menu;
+  image/video themes appear under "图片主题".
 - If the user names a mood/character (e.g. "dark Genshin"), map it to the
   closest id, or just apply the default and let them pick from the 🎨 menu.
+- Running `apply` **without** `--theme` restores the user's last 🎨 menu choice:
+  a built-in theme, a custom upload, or "native light / native dark" (menu
+  injected, no skin applied, only the light/dark kind pinned).
 - Custom image: `node src/cli.mjs create --image "/path/to/hero.webp" --name "My Skin"`
   then `node src/cli.mjs apply --theme my-skin`. The in-app 🎨 menu also supports
   "＋ 自定义皮肤" (images and MP4 video) with automatic color extraction. Up to 10
@@ -164,6 +173,10 @@ install is always left untouched.
   with a hint when video data is missing.
 - Do not import README/preview screenshots or images with baked-in UI as a
   theme background; use clean wallpapers / character art.
+- CSS themes may ship a companion `js` that executes inside the renderer
+  (`new Function`) for DOM injection (e.g. TDP's hero layer, QQ 2008's sounds and
+  pet widget). Only apply themes from a repo the user trusts; the JS returns an
+  optional teardown callback that runs on theme switch / native restore / pause.
 
 ## Checks (sanity before reporting done)
 
@@ -182,7 +195,10 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 - `src/cli.mjs` — entry point: `list` / `create` / `apply` / `watch` / `status` / `pause` / `doctor`.
 - `src/cdp-client.mjs` — CDP connection + renderer discovery.
 - `src/skin-css.mjs` — `--cb-*` variable overrides + background + container transparency.
-- `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native) + self-heal
+- `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native) + draggable
+  menu button (pointer-capture drag, 5px click/drag threshold, position persisted as
+  viewport fractions so maximize/resize keeps the relative spot, viewport clamping,
+  double-click reset to default) + self-heal
   re-attach observer + right-side nav buttons (top / prev question / next question /
   bottom, heuristic scroll-box and user-anchor detection, rAF smooth scroll).
 - `src/injector.mjs` — idempotent CSS+menu injection and removal (re-inject / pause
@@ -197,12 +213,18 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 - `scripts/apply.ps1` / `pause.ps1` / `find-workbuddy.ps1` — Windows launchers
   (shared `Find-WorkBuddyExe` / `Find-Node` live in `scripts/common.ps1`;
   `apply.ps1 -Watch` enters watch mode after applying).
-- `themes/` — 15 built-in theme folders (`theme.json` + `hero.webp`; video themes use
-  `hero.mp4` + `poster` image, e.g. `misty-fir-rain`, `snow-animals`).
-- `test/` — Node built-in unit tests (`node:test`): theme schema/poster rules and
-  path-escape guard, theme listing/dedup, CDP session domains, CLI apply orchestration,
-  video pre-provision chunking/dedup/failure degradation, and 🎨 menu script structure
-  (teardown, rAF-coalesced layout). Run `npm test`.
+- `themes/` — 18 built-in theme folders (`theme.json` + `hero.webp`; video themes use
+  `hero.mp4` + `poster` image, e.g. `misty-fir-rain`, `snow-animals`; CSS themes use a
+  `css` field — optional `js` companion script and `order` sort key — e.g. `qq2008`,
+  `tdp-pro`, `tdp-pro-dark`). Any theme may set an optional `thumbnail` image (≤512KB,
+  640×400 WebP recommended) used as the theme-picker card cover; without it CSS themes
+  show an accent→secondary gradient and image themes extract their hero/poster.
+- `test/` — Node built-in unit tests (`node:test`): theme schema/poster/CSS rules and
+  path-escape guard, bundled-theme guard (every `themes/` dir loads and its `js`
+  compiles), skin CSS generation (title gradient / tagline / two-tone wordmark),
+  theme listing/dedup, CDP session domains, CLI apply orchestration, video
+  pre-provision chunking/dedup/failure degradation, CSS asset inlining, and 🎨 menu
+  script structure (teardown, rAF-coalesced layout). Run `npm test`.
 - `README.md` — full human-readable documentation.
 
 ## One-line summary for the user
