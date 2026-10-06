@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - shared helpers for apply.ps1 / pause.ps1 / find-workbuddy.ps1
 .DESCRIPTION

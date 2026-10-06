@@ -80,6 +80,13 @@ No official files are touched.
 
    If you hit an execution-policy error, run once:
    `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then retry.
+
+   For manual use, the primary Windows entry is double-clicking `Start.bat` at the
+   repo root. It wraps `apply.ps1` (quit WorkBuddy → relaunch with CDP port 9223 →
+   inject skin), restores the last 🎨 menu choice when run without arguments, works
+   regardless of the system execution policy (`-ExecutionPolicy Bypass` is built
+   in), keeps the console window open with the error message on failure, and
+   accepts an optional theme id: `Start.bat genshin-night`.
 2. If `apply.ps1` cannot locate `WorkBuddy.exe`, run the locator and follow its
    printed hint (often you just need to launch WorkBuddy once so the path is
    registered):
@@ -124,23 +131,9 @@ No official files are touched.
   30 MB) instead of localStorage. AVIF requires the embedded Chromium to be ≥ 85
   (any recent Electron qualifies).
 
-## Optional: watch mode (auto-recover after restarts)
+## Apply receipts
 
-Injection lives for the renderer's lifetime — a manual WorkBuddy restart or a full
-page reload drops the skin. `watch` closes that gap:
-
-```bash
-node src/cli.mjs watch [--port 9223] [--interval 3000]
-# Windows equivalent: .\scripts\apply.ps1 -Watch
-```
-
-It polls the CDP port: if WorkBuddy was restarted without the debug flag, it
-relaunches it with the flag and re-applies the last-used skin; if the page merely
-reloaded (port alive, skin missing), it re-injects directly. If the user quit
-WorkBuddy on purpose (no process), it stays idle and never relaunches on its own.
-Ctrl+C to stop. Action failures back off exponentially (up to 60s).
-
-Every apply/pause also writes a receipt to `state.json` (time, theme, ok/error);
+Every apply/pause writes a receipt to `state.json` (time, theme, ok/error);
 `doctor` shows it along with a Node.js version check (requires 18+).
 
 ## Pause / restore to native
@@ -164,7 +157,7 @@ install is always left untouched.
   local software while a skin is active (Chromium CDP has no same-user auth).
 - Revision: injection lives for the renderer's lifetime. After a **manual**
   WorkBuddy restart the skin disappears by design — re-run `apply` to bring it
-  back, or keep `watch` running to have it restored automatically. The injected
+  back. The injected
   menu/style also self-heal: if the frontend framework rebuilds the DOM tree and
   drops them, a MutationObserver re-attaches them automatically.
 - Built-in video themes pre-provision their MP4 into the renderer's IndexedDB at
@@ -192,7 +185,7 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 
 ## Resources
 
-- `src/cli.mjs` — entry point: `list` / `create` / `apply` / `watch` / `status` / `pause` / `doctor`.
+- `src/cli.mjs` — entry point: `list` / `create` / `apply` / `status` / `pause` / `doctor`.
 - `src/cdp-client.mjs` — CDP connection + renderer discovery.
 - `src/skin-css.mjs` — `--cb-*` variable overrides + background + container transparency.
 - `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native) + draggable
@@ -203,16 +196,14 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
   bottom, heuristic scroll-box and user-anchor detection, rAF smooth scroll).
 - `src/injector.mjs` — idempotent CSS+menu injection and removal (re-inject / pause
   call the menu's `window.__workbuddySkinTeardown` first).
-- `src/watcher.mjs` — watch loop: re-inject after page reload, relaunch+reapply after
-  non-debug restart, idle when the user quit WorkBuddy; failure backoff to 60s.
-- `src/relaunch.mjs` — process-level ops: find/quit/relaunch WorkBuddy with the CDP flag.
 - `src/state-store.mjs` — apply/pause receipt (`state.json`, atomic write, merge semantics).
 - `src/renderer-snippets.mjs` — shared in-page JS snippets (IndexedDB open, base64 decode).
 - `src/constants.mjs`, `src/theme-schema.mjs`, `src/theme-store.mjs` — config & theme model.
 - `scripts/apply.command` / `pause.command` — macOS launchers.
+- `Start.bat` (repo root) — Windows double-click entry: forwards to `apply.ps1`
+  with an optional theme id, execution-policy-proof (`-ExecutionPolicy Bypass`).
 - `scripts/apply.ps1` / `pause.ps1` / `find-workbuddy.ps1` — Windows launchers
-  (shared `Find-WorkBuddyExe` / `Find-Node` live in `scripts/common.ps1`;
-  `apply.ps1 -Watch` enters watch mode after applying).
+  (shared `Find-WorkBuddyExe` / `Find-Node` live in `scripts/common.ps1`).
 - `themes/` — 18 built-in theme folders (`theme.json` + `hero.webp`; video themes use
   `hero.mp4` + `poster` image, e.g. `misty-fir-rain`, `snow-animals`; CSS themes use a
   `css` field — optional `js` companion script and `order` sort key — e.g. `qq2008`,

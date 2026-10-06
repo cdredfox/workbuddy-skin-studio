@@ -28,7 +28,7 @@
 - **视频背景**：MP4（H.264）抽帧取色，海报帧作 CSS 底图兜底，视频以固定背景层循环静音播放；原始视频存 IndexedDB（不占 localStorage 配额），限 30MB
 - **18 个内置预设**：Miku、原神 ×2、鸣潮 ×2、火影忍者 ×2、恋与深空 ×2、猫鼠、海滩夜晚、小可爱、冷杉雨（MP4 视频）、月夜、温泉雪（MP4 视频），外加三款整页 CSS 定制主题「QQ 2008 / 腾讯云 TDP（浅色 · 深色）」
 - **深浅色自动适配**：根据主题配色的 surface 明度自动切换 WorkBuddy 的 `data-vscode-theme-kind`，让 VS Code 原生控件（输入框、按钮等）跟着深浅色变
-- **双平台**：macOS（`.command`）+ Windows（`.ps1`）
+- **双平台**：macOS（`.command`）+ Windows（双击 `Start.bat`，或 `.ps1`）
 - **随时还原**：暂停皮肤或切回原生界面，官方安装包始终原封不动
 
 ## 快速开始
@@ -57,6 +57,14 @@ node src/cli.mjs apply --theme genshin-night
 
 ### Windows
 
+**双击根目录的 `Start.bat` 即可**（推荐入口）。它是 `scripts\apply.ps1` 的批处理包装，双击后依次完成：正常退出 WorkBuddy → 以本机调试模式（CDP 端口 9223）重新打开 → 等待调试端口就绪 → 注入皮肤；不带参数时自动恢复你上次在 🎨 菜单里的选择。
+
+- **指定主题**：命令行执行 `Start.bat genshin-night`（双击等价于无参数运行）
+- **执行策略零配置**：Start.bat 内部以 `-ExecutionPolicy Bypass` 调起 PowerShell，双击不受系统执行策略限制，无需任何前置设置
+- **结果可见**：成功时窗口自动关闭；失败时窗口停住并显示原因（如找不到 WorkBuddy.exe 或 node），方便排查
+
+也可以直接用 PowerShell 运行（Start.bat 内部就是调它，行为完全一致）：
+
 ```powershell
 # PowerShell 运行
 .\scripts\apply.ps1
@@ -68,10 +76,8 @@ node src/cli.mjs apply --theme genshin-night
 .\scripts\find-workbuddy.ps1
 ```
 
-也可以直接双击根目录的 `Start.bat`（内部调用 `apply.ps1`，行为一致）；命令行带主题 id 使用：`Start.bat genshin-night`。
-
-> Windows 首次运行若报执行策略错误，执行：
-> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+> 直接运行 `apply.ps1` 若报执行策略错误，执行：
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`（双击 Start.bat 走 Bypass，无需此步骤）
 
 应用皮肤时 WorkBuddy 会被正常退出并以本机调试模式重新打开，**当前任务请先保存**。
 
@@ -85,9 +91,7 @@ node src/cli.mjs apply --theme genshin-night
 .\scripts\pause.ps1
 ```
 
-> 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重跑一次 apply 即可回来——不带主题参数时会自动恢复你上次在 🎨 菜单里的选择（内置主题 / 自定义皮肤 / 原生浅色 / 原生深色）。
->
-> 不想每次手动重跑？用**看护模式**：`node src/cli.mjs watch`（或 Windows `.\scripts\apply.ps1 -Watch`）。它会常驻探测：WorkBuddy 以非调试模式重启时自动拉起并恢复皮肤；界面整页重载（皮肤掉了但调试端口还在）时直接重注；你主动退出 WorkBuddy 时它只待命，绝不擅自拉起。Ctrl+C 退出看护。
+> 注意：WorkBuddy 手动重启后注入会消失（CDP 方案的天性），重新双击 `Start.bat`（或重跑 apply）即可回来——不带主题参数时会自动恢复你上次在 🎨 菜单里的选择（内置主题 / 自定义皮肤 / 原生浅色 / 原生深色）。
 
 ## 主题切换菜单
 
@@ -172,7 +176,6 @@ node src/cli.mjs apply --theme my-skin
 node src/cli.mjs list                              # 列出所有主题
 node src/cli.mjs create --image PATH --name NAME   # 从图片创建主题
 node src/cli.mjs apply [--theme ID] [--port 9223]  # 应用主题
-node src/cli.mjs watch [--port 9223] [--interval 3000]  # 常驻看护：重启/重载后自动恢复皮肤
 node src/cli.mjs status                            # 查询注入状态
 node src/cli.mjs pause                             # 恢复原生（别名：restore）
 node src/cli.mjs doctor                            # 检查环境（app 路径、端口、Node 版本、上次注入回执）
@@ -196,8 +199,7 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 - `test/theme-store.test.mjs` — 主题列表：多目录同 id 去重（内置优先）、缺 `name` 不再崩、跳过坏清单与 `.tmp-` 残留目录；`create` 名称校验
 - `test/bundled-themes.test.mjs` — 内置主题集成护栏：`themes/` 下每个目录都通过 `loadTheme` 完整校验、主题 id 与目录名一致且不重复、随主题的 `js` 文本可被 JS 引擎编译
 - `test/cdp-client.test.mjs` — CDP 会话：默认不 enable 任何域、`enableDomains` 显式开启与参数校验
-- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、恢复上次原生浅色/深色（按默认主题注入菜单但不应用皮肤，只钉明暗）、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`watch` 命令接线；`doctor` 的 Node 版本检查与状态展示
-- `test/watcher.test.mjs` — 看护循环：页面重载重注、非调试重启拉起+重注、主动退出只待命、启动中不误判、失败退避翻倍（上限 60s）、探测异常落日志继续
+- `test/cli.test.mjs` — `apply` 编排：坏主题不进菜单且保序、选中主题失败即报错、恢复上次自定义皮肤、恢复上次原生浅色/深色（按默认主题注入菜单但不应用皮肤，只钉明暗）、记住的主题失效回退默认；状态回执（apply/pause 成败落盘、写失败不阻断）；`doctor` 的 Node 版本检查与状态展示
 - `test/state-store.test.mjs` — 状态回执：读写往返、浅合并、损坏文件回退 null、原子写入
 
 ## 内置主题
@@ -225,7 +227,7 @@ npm test         # 运行 test/ 下的单元测试（等价于 node --test）
 
 ## 设计边界
 
-- 这是一个轻量工具。皮肤跟随当前 renderer 存活，WorkBuddy 完整重载界面后重新运行一次 apply 即可（或用 `watch` 常驻看护自动恢复）
+- 这是一个轻量工具。皮肤跟随当前 renderer 存活，WorkBuddy 完整重载界面后重新运行一次 apply 即可
 - 注入的菜单与 `<style>` 具备自愈能力：前端框架整树重建把它们移除后会自动重挂（`MutationObserver` 观察 body/head 直接子节点）
 - CDP 只绑定本机回环地址 `127.0.0.1`，主题运行期间勿跑来路不明的本机程序
 - 重复 apply / 暂停会先拆掉上一轮注入的观察者与监听器（`window.__workbuddySkinTeardown`）；从本次修复之前的版本升级时，旧版残留的观察者无法被拆除，建议升级后重启一次 WorkBuddy

@@ -1,13 +1,13 @@
 @echo off
-REM WorkBuddy Skin Studio - apply (Windows batch wrapper)
+REM WorkBuddy Skin Studio - Windows double-click entry (recommended)
 REM Thin wrapper around scripts\apply.ps1 so behavior stays identical:
 REM restart WorkBuddy with CDP port 9223 (skip if already debuggable),
-REM then inject the skin.
+REM then inject the skin. PowerShell is invoked with -ExecutionPolicy Bypass,
+REM so no Set-ExecutionPolicy setup is needed for double-click use.
 REM
 REM Usage:
-REM   apply.bat              apply default theme (miku-light)
-REM   apply.bat genshin-night
-REM   apply.bat mice-cat
+REM   Start.bat                restore last-used skin (default theme: miku-light)
+REM   Start.bat genshin-night  apply a specific theme id
 setlocal
 set "ROOT=%~dp0"
 set "THEME=%~1"

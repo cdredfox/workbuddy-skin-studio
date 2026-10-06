@@ -138,32 +138,6 @@ test("pause：记录 lastPause（removed 数）", async () => {
   assert.equal(spy.writes.at(-1).lastPause.ok, true);
 });
 
-// ---- watch 常驻看护：端口/间隔透传，reapply 复用 apply 编排 ----
-test("watch：透传 port 与 interval，reapply 走 apply 路径", async () => {
-  const { overrides, calls } = applyOverrides({ themes: THEMES });
-  const spy = stateSpy();
-  let watchArgs = null;
-  const result = await runCli(["watch", "--port", "9333", "--interval", "800"], {
-    ...overrides,
-    ...spy,
-    startWatch: async (args) => {
-      watchArgs = args;
-      await args.reapply(); // reapply 应触发一次完整 apply（含状态记录）
-      return { stopped: true };
-    },
-  });
-  assert.deepEqual(result, { stopped: true });
-  assert.equal(watchArgs.port, 9333);
-  assert.equal(watchArgs.intervalMs, 800);
-  assert.equal(calls.applySkin.port, 9333); // reapply 沿用 watch 的端口
-  assert.equal(spy.writes.at(-1).lastApply.ok, true);
-});
-
-test("watch：--interval 小于 500 报错", async () => {
-  const { overrides } = applyOverrides({ themes: THEMES });
-  await assert.rejects(runCli(["watch", "--interval", "100"], overrides), /--interval/);
-});
-
 // ---- doctor：Node 版本检查与状态回执一并输出 ----
 test("doctor：包含 node 版本检查结果与 statePath，state 来自状态文件", async () => {
   const state = { lastApply: { ok: true, themeId: "miku-light" } };
