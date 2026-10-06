@@ -70,13 +70,24 @@
 
 ### 🤖 用 AI 一键安装（推荐）
 
-不想自己敲命令？把本仓库的 GitHub 地址发给任意 AI 助手（CodeBuddy / Claude / Cursor 等），再加上一句：
+不想自己敲命令？把下面这段提示词**整段复制**发给任意 AI 助手（CodeBuddy / Claude / Cursor 等）即可：
 
-> 用这个开源项目帮我更换 WorkBuddy 的主题
+```text
+用这个开源项目帮我更换 WorkBuddy 的主题：https://github.com/LetitiaChan/workbuddy-skin-studio
+
+请先克隆仓库，然后阅读仓库根目录的 SKILL.md，严格按照其中的自动化流程执行：
+检测我的操作系统 → 运行对应的 apply 脚本（Windows 双击 Start.bat 或运行 scripts\apply.ps1，macOS 运行 scripts/apply.command）→ 注入主题 → 验证状态。
+运行脚本前请提醒我保存好 WorkBuddy 里正在进行的任务。
+```
 
 AI 会克隆仓库、读取根目录的 [`SKILL.md`](SKILL.md)，自动完成**平台检测 → 运行对应 apply 脚本 → 注入主题 → 验证状态**，你只需在弹窗里保存好 WorkBuddy 当前任务即可。换肤后日常切换仍在右上角 🎨 菜单里进行。
 
-> 想指定主题也可直接说，例如「用深色原神主题」或「帮我换成 miku-light」。
+> 想指定主题，把第一行换成对应主题即可，例如：
+>
+> ```text
+> 用这个开源项目帮我更换 WorkBuddy 的主题：https://github.com/LetitiaChan/workbuddy-skin-studio
+> 用 miku-light 主题（或：用深色原神主题 genshin-night）
+> ```
 
 ### 🍎 macOS
 
