@@ -150,6 +150,54 @@ body[data-application-name=workbuddy] {
   background: linear-gradient(180deg, transparent 0 70%, color-mix(in srgb, var(--wb-surface) 50%, transparent) 100%) !important;
 }
 
+/* 「为你推荐」技能推荐条（.wb-skill-rec-bar，挂在 .wb-home-composer__skill-recommend 下）：
+   原生浅色 background:var(--wb-home-bg-secondary,#fafafa) —— 不透明白条 flex:1 横贯 composer，
+   ::before 还在条上方叠 32px 同色渐变托底，壁纸皮肤上呈整块白版、右端硬边；
+   且该条读的是 --wb-home-bg-secondary / --wb-color-palette-gray-3，不在 --cb-* 覆盖范围内。
+   改为磨砂半透明（与侧边栏同一语言），chips 同步透化，全 var() 引用随主题取色自适应 */
+.wb-skill-rec-bar {
+  background: color-mix(in srgb, var(--wb-surface) 55%, transparent) !important;
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+.wb-skill-rec-bar::before {
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wb-surface) 55%, transparent)) !important;
+}
+.wb-skill-rec-bar__label,
+.wb-skill-rec-bar__placeholder-text,
+.wb-skill-rec-bar__empty-text {
+  color: color-mix(in srgb, var(--wb-text) 78%, transparent) !important;
+  text-shadow: 0 1px 6px var(--wb-surface);
+}
+.wb-skill-rec-chip {
+  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
+  color: var(--wb-text) !important;
+  border: 1px solid color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+.wb-skill-rec-chip:hover {
+  background: color-mix(in srgb, var(--wb-accent) 22%, var(--wb-surface)) !important;
+}
+
+/* 首页快捷 chips（quick-actions 模式）与左右滚动渐隐、翻页箭头：
+   浅色原生分别是 #fff 底、#fff 硬编码渐变、#fff 箭头底，壁纸上同属一类白块 */
+.wb-home-composer__chips .quick-actions__item,
+.wb-home-composer__chip {
+  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
+  color: var(--wb-text) !important;
+  border-color: color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+.quick-actions--fade-right::after {
+  background: linear-gradient(270deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
+}
+.quick-actions--fade-left::before {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
+}
+.quick-actions__arrow {
+  background: color-mix(in srgb, var(--wb-surface) 72%, transparent) !important;
+  color: var(--wb-text) !important;
+}
+
 /* 详情面板半透明磨砂 */
 [data-view-id=detail-panel] {
   background: color-mix(in srgb, var(--wb-surface) 88%, transparent) !important;

@@ -46,3 +46,28 @@ test("左上角字标：硬切渐变双色字标（Work 文本色 / Buddy accent
   const logoBlock = css.slice(css.indexOf(".conversation-list-logo .logo-workbuddy-title"));
   assert.ok(!/#[0-9a-f]{6}/i.test(logoBlock), "字标不应硬编码色值（哨兵替换覆盖不到 data URL 编码色值）");
 });
+
+test("「为你推荐」技能推荐条：原生不透明白条改为磨砂半透明，全 var() 引用", () => {
+  const css = buildSkinCss({ theme: baseTheme, heroDataUrl: HERO });
+  // 条本体 + 上方 32px 渐变托底（::before）必须覆盖，否则壁纸上呈整块白版
+  assert.ok(css.includes(".wb-skill-rec-bar {"));
+  assert.ok(css.includes(".wb-skill-rec-bar::before"));
+  assert.ok(css.includes(".wb-skill-rec-bar__label"));
+  assert.ok(css.includes(".wb-skill-rec-chip"));
+  const barBlock = css.slice(css.indexOf(".wb-skill-rec-bar {"), css.indexOf("/* 首页快捷 chips"));
+  assert.ok(barBlock.includes("color-mix(in srgb, var(--wb-surface) 55%, transparent) !important"));
+  assert.ok(barBlock.includes("backdrop-filter: blur(14px)"));
+  assert.ok(!/#[0-9a-f]{3,8}\b/i.test(barBlock), "推荐条规则不应硬编码色值");
+});
+
+test("首页快捷 chips 与滚动渐隐：白底/白色渐变改为皮肤表面色磨砂", () => {
+  const css = buildSkinCss({ theme: baseTheme, heroDataUrl: HERO });
+  assert.ok(css.includes(".wb-home-composer__chips .quick-actions__item"));
+  assert.ok(css.includes(".wb-home-composer__chip"));
+  assert.ok(css.includes(".quick-actions--fade-right::after"));
+  assert.ok(css.includes(".quick-actions--fade-left::before"));
+  assert.ok(css.includes(".quick-actions__arrow"));
+  // 渐隐不再用硬编码 #fff，改走 surface 半透明渐变
+  const fadeBlock = css.slice(css.indexOf(".quick-actions--fade-right::after"));
+  assert.ok(!fadeBlock.includes("#fff"), "滚动渐隐不应硬编码白色");
+});
