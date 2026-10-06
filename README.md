@@ -14,7 +14,9 @@
 
 ![右上角 🎨 菜单 · 主题切换](docs/images/preview-menu.png)
 
-![深色主题 · 原神星夜](docs/images/preview-dark.png)
+![深色主题 · 猫鼠夜巡](docs/images/preview-dark.png)
+
+![动态主题 · 下雪温泉](docs/images/preview-dynamic.gif)
 
 
 ## 这是什么
