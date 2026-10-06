@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { applySkin, ensureRendererVideos, removeSkin, uploadRendererVideo } from "../src/injector.mjs";
+import {
+  activateSavedNative,
+  activateSavedSkin,
+  applySkin,
+  ensureRendererVideos,
+  readSavedActiveSkin,
+  removeSkin,
+  skinStatus,
+  uploadRendererVideo,
+} from "../src/injector.mjs";
 
 // 假 CDP Session：按表达式特征分流返回值，并记录完整调用序列
 class FakeSession {
@@ -422,4 +431,102 @@ test("applySkin：theme.json thumbnail 内联为 data URL 随条目下发（thum
     const expected = `"thumb":"data:image/webp;base64,${Buffer.from("RIFFxxxxWEBP").toString("base64")}"`;
     assert.ok(expression.includes(expected), "条目应携带 thumbnail data URL");
   });
+});
+
+// ---- 轻量表达式（status / 读取 / 激活）：按 url 分派返回值的 Session ----
+
+function valueSession(valuesByUrl) {
+  const sessions = [];
+  class Session {
+    constructor(url) {
+      this.url = url;
+      this.calls = [];
+      sessions.push(this);
+    }
+    async open() {}
+    close() {
+      this.closed = true;
+    }
+    async evaluate(expression) {
+      this.calls.push(expression);
+      return valuesByUrl.get(this.url);
+    }
+  }
+  return { Session, sessions };
+}
+
+const lightTargets = [target("a"), target("b")];
+const fetchLight = async () => lightTargets;
+
+test("skinStatus：逐 target 汇总状态，表达式同时探测 style/menu 节点与主题 id", async () => {
+  const { Session, sessions } = valueSession(
+    new Map([
+      ["ws://127.0.0.1:9223/a", { installed: true, menu: true, themeId: "miku-light" }],
+      ["ws://127.0.0.1:9223/b", { installed: false, menu: false, themeId: null }],
+    ]),
+  );
+  const result = await skinStatus({ port: 9223, deps: { fetchRendererTargets: fetchLight, Session } });
+  assert.deepEqual(result, [
+    { installed: true, menu: true, themeId: "miku-light" },
+    { installed: false, menu: false, themeId: null },
+  ]);
+  assert.equal(sessions.length, 2);
+  const expression = sessions[0].calls[0];
+  assert.ok(expression.includes('getElementById("workbuddy-skin-style")'));
+  assert.ok(expression.includes('getElementById("workbuddy-skin-menu")'));
+  assert.ok(expression.includes("dataset.workbuddySkin"));
+});
+
+test("readSavedActiveSkin：返回第一个非空字符串；全为空/非字符串时返回 null", async () => {
+  const { Session } = valueSession(
+    new Map([
+      ["ws://127.0.0.1:9223/a", ""],
+      ["ws://127.0.0.1:9223/b", "custom-xyz"],
+    ]),
+  );
+  const deps = { fetchRendererTargets: fetchLight, Session };
+  assert.equal(await readSavedActiveSkin({ port: 9223, deps }), "custom-xyz");
+
+  const empty = valueSession(new Map([["ws://127.0.0.1:9223/a", null], ["ws://127.0.0.1:9223/b", ""]]));
+  assert.equal(await readSavedActiveSkin({ port: 9223, deps: { fetchRendererTargets: fetchLight, Session: empty.Session } }), null);
+});
+
+test("readSavedActiveSkin：表达式带 try/catch，localStorage 不可用时不打断渲染进程", async () => {
+  const { Session, sessions } = valueSession(new Map([["ws://127.0.0.1:9223/a", null]]));
+  await readSavedActiveSkin({ port: 9223, deps: { fetchRendererTargets: async () => [target("a")], Session } });
+  const expression = sessions[0].calls[0];
+  assert.ok(expression.includes('localStorage.getItem("workbuddySkinActive")'));
+  assert.ok(/try \{[\s\S]*?\} catch \{/.test(expression));
+});
+
+test("activateSavedSkin：表达式带 setTheme 兜底，activated 只计成功 target", async () => {
+  const { Session, sessions } = valueSession(
+    new Map([
+      ["ws://127.0.0.1:9223/a", true],
+      ["ws://127.0.0.1:9223/b", false], // 菜单脚本缺失（__workbuddySkin 不存在）返回 false
+    ]),
+  );
+  const result = await activateSavedSkin({
+    port: 9223,
+    id: "custom-xyz",
+    fallbackId: "miku-light",
+    deps: { fetchRendererTargets: fetchLight, Session },
+  });
+  assert.deepEqual(result, { activated: 1 });
+  const expression = sessions[0].calls[0];
+  assert.ok(expression.includes('api.applyCustom("custom-xyz")'));
+  // 皮肤已被删除时 applyCustom 静默失败，需回落内置主题避免停在无皮肤状态
+  assert.ok(expression.includes('api.setTheme("miku-light")'));
+});
+
+test("activateSavedNative：表达式按 mode 钉明暗，activated 只计成功 target", async () => {
+  const { Session, sessions } = valueSession(
+    new Map([
+      ["ws://127.0.0.1:9223/a", true],
+      ["ws://127.0.0.1:9223/b", true],
+    ]),
+  );
+  const result = await activateSavedNative({ port: 9223, mode: "dark", deps: { fetchRendererTargets: fetchLight, Session } });
+  assert.deepEqual(result, { activated: 2 });
+  assert.ok(sessions[0].calls[0].includes('api.setNative("dark")'));
 });

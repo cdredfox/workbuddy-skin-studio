@@ -48,7 +48,7 @@ No official files are touched.
    ./scripts/apply.command
 
    # or a specific theme via the cross-platform CLI
-   node src/cli.mjs apply --theme genshin-night
+   node src/cli.mjs apply --theme mice-cat
    ```
 
    `apply.command` quits WorkBuddy, relaunches it with the CDP port, waits for
@@ -75,7 +75,7 @@ No official files are touched.
    .\scripts\apply.ps1
 
    # or a specific theme
-   .\scripts\apply.ps1 -Theme genshin-night
+   .\scripts\apply.ps1 -Theme mice-cat
    ```
 
    If you hit an execution-policy error, run once:
@@ -86,7 +86,7 @@ No official files are touched.
    inject skin), restores the last 🎨 menu choice when run without arguments, works
    regardless of the system execution policy (`-ExecutionPolicy Bypass` is built
    in), keeps the console window open with the error message on failure, and
-   accepts an optional theme id: `Start.bat genshin-night`.
+   accepts an optional theme id: `Start.bat mice-cat`.
 2. If `apply.ps1` cannot locate `WorkBuddy.exe`, run the locator and follow its
    printed hint (often you just need to launch WorkBuddy once so the path is
    registered):

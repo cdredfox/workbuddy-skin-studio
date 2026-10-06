@@ -7,7 +7,7 @@ REM so no Set-ExecutionPolicy setup is needed for double-click use.
 REM
 REM Usage:
 REM   Start.bat                restore last-used skin (default theme: miku-light)
-REM   Start.bat genshin-night  apply a specific theme id
+REM   Start.bat mice-cat    apply a specific theme id
 setlocal
 set "ROOT=%~dp0"
 set "THEME=%~1"

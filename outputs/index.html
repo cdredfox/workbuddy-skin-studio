@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="WorkBuddy Skin Studio：不改安装包的 WorkBuddy 桌面端换肤工具，基于 CDP 运行时注入。">
+<title>WorkBuddy Skin Studio · 自定义主题，不动安装包</title>
+<style>
+  :root{
+    --bg:#14161b; --card:#1e2128; --ink:#e8eaf0; --muted:#8b93a3; --line:#2c323b;
+    --b1:#8b7dff; --b2:#5ea2ff; --grad:linear-gradient(120deg,#8b7dff,#5ea2ff);
+    --soft:#272134; --soft2:#1d2733; --good:#3ddc97; --warn:#f0b04a;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.85;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  body::before{content:"";display:block;height:6px;background:var(--grad);}
+  .shell{max-width:700px;margin:0 auto;padding:0 26px;}
+  a{color:var(--b2);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;
+    background:#262b34;color:#b3a6ff;padding:2px 6px;border-radius:6px;}
+  ::selection{background:#463d8c}
+
+  /* ---------- Hero ---------- */
+  .hero{padding:74px 0 40px;text-align:left;}
+  .kicker{font-style:italic;letter-spacing:.24em;text-transform:lowercase;color:var(--muted);font-size:13px;}
+  h1{font-size:clamp(38px,6.4vw,58px);font-weight:800;letter-spacing:-.02em;line-height:1.14;margin:18px 0 20px;}
+  .lead{font-size:17px;color:#c3c9d4;line-height:1.95;margin:0 0 26px;}
+  .lead .sig{display:block;margin-top:14px;color:var(--b1);font-weight:600;font-style:italic;}
+  .badges{display:flex;flex-wrap:wrap;align-items:center;gap:9px;}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 13px;border-radius:99px;
+    background:var(--soft);color:#b3a6ff;font-weight:600;}
+  .pill.ghost{background:#1e2128;border:1px solid var(--line);color:var(--muted);font-weight:500;}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--grad);}
+  .hero-ic{width:34px;height:34px;border-radius:10px;background:var(--grad);display:inline-flex;align-items:center;
+    justify-content:center;font-size:18px;box-shadow:0 6px 16px -6px rgba(139,125,255,.55);}
+
+  /* ---------- Section ---------- */
+  section{padding:56px 0 8px;}
+  .num{font-size:clamp(64px,9vw,96px);font-weight:800;line-height:.9;letter-spacing:-.04em;
+    background:var(--grad);background-clip:text;-webkit-background-clip:text;color:transparent;opacity:.95;}
+  h2{font-size:clamp(25px,4vw,32px);font-weight:800;letter-spacing:-.02em;margin:14px 0 6px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;letter-spacing:.02em;}
+  p{margin:0 0 16px;} .body{color:#c3c9d4;}
+  .slogan{margin:30px 0 8px;color:var(--b1);font-weight:600;font-style:italic;font-size:15px;}
+  .hair{border:none;border-top:1px solid var(--line);margin:46px 0 0;}
+
+  /* ---------- Cards ---------- */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:22px 0;}
+  .gcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 18px;
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px -14px rgba(0,0,0,.5);transition:transform .18s,box-shadow .18s;}
+  .gcard:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgba(0,0,0,.3),0 18px 36px -14px rgba(139,125,255,.32);}
+  .gcard .no{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:var(--b1);letter-spacing:.1em;}
+  .gcard h3{margin:8px 0 7px;font-size:15.5px;font-weight:700;}
+  .gcard p{margin:0;font-size:13px;color:var(--muted);line-height:1.7;}
+
+  /* ---------- Figure ---------- */
+  figure{margin:22px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -16px rgba(0,0,0,.55);}
+  figure img{display:block;width:100%;height:auto;}
+  figcaption{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);}
+  .tag{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:3px 10px;border-radius:99px;
+    background:var(--soft2);color:var(--b2);}
+
+  /* ---------- Theme list ---------- */
+  .tlist{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;margin:20px 0;}
+  .trow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:11px;padding:10px 14px;font-size:13.5px;}
+  .trow .idx{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--muted);}
+  .trow .name{font-weight:600;}
+  .tbadge{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.06em;padding:2.5px 9px;border-radius:99px;}
+  .tbadge.CUSTOM{background:#2a2138;color:#c4a6ff;} .tbadge.PICTURE{background:#1d2833;color:#6db3f2;}
+  .tbadge.VIDEO{background:#1c2b24;color:#4fd6a0;} .tbadge.UPLOAD{background:#2e2518;color:#f0a75e;}
+
+  /* ---------- Feature list ---------- */
+  ul.feat{list-style:none;padding:0;margin:18px 0;}
+  ul.feat li{padding:11px 0;border-bottom:1px dashed var(--line);font-size:14.5px;}
+  ul.feat li:last-child{border-bottom:none;}
+  ul.feat b{font-weight:700;}
+  ul.feat .sep{color:var(--b1);font-weight:700;margin:0 6px;}
+
+  /* ---------- Code / note ---------- */
+  pre{background:#181b21;color:#dbe2ec;border:1px solid var(--line);border-radius:12px;padding:18px 20px;font-size:12.8px;line-height:1.75;
+    overflow-x:auto;margin:16px 0;font-family:ui-monospace,Consolas,monospace;}
+  pre code{background:transparent;color:inherit;padding:0;}
+  .note{background:#2a2317;border-left:3px solid var(--warn);border-radius:0 11px 11px 0;
+    padding:14px 18px;font-size:13.5px;color:#e8c98a;margin:18px 0;}
+
+  /* ---------- Ways ---------- */
+  .way{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:16px 0;overflow:hidden;
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.5);}
+  .way-head{display:flex;align-items:center;gap:11px;padding:16px 18px 0;}
+  .way-no{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:#fff;
+    background:var(--grad);border-radius:7px;padding:3px 9px;letter-spacing:.06em;}
+  .way-os{font-size:11px;font-weight:700;letter-spacing:.05em;padding:3px 10px;border-radius:99px;background:var(--soft);color:#b3a6ff;}
+  .way-title{font-weight:700;font-size:15px;}
+  .way-body{padding:12px 18px 18px;}
+  .way-body p{font-size:14px;color:#c3c9d4;margin:0 0 12px;}
+  .cmdline{position:relative;}
+  .cmdline pre{margin:0;}
+  .copy{position:absolute;top:9px;right:9px;font-size:11.5px;font-weight:600;font-family:inherit;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#cdd6e4;border-radius:8px;
+    padding:5px 12px;cursor:pointer;transition:background .15s,color .15s;}
+  .copy:hover{background:rgba(255,255,255,.16);color:#fff;}
+  .copy.ok{background:var(--good);border-color:var(--good);color:#08281c;}
+  details{margin-top:11px;font-size:13px;}
+  summary{cursor:pointer;color:var(--b2);font-weight:600;list-style:none;user-select:none;}
+  summary::-webkit-details-marker{display:none;}
+  summary::before{content:"▸";display:inline-block;margin-right:7px;transition:transform .15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  details .inner{padding:10px 2px 2px;color:var(--muted);line-height:1.75;}
+
+  /* ---------- Compare table ---------- */
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin:20px 0;background:var(--card);
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.5);}
+  table{width:100%;border-collapse:collapse;min-width:620px;}
+  th,td{text-align:left;vertical-align:top;padding:13px 16px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.65;}
+  th{background:#22262d;font-size:12.5px;font-weight:700;color:#dde2ec;}
+  tr:last-child td{border-bottom:none;}
+  td:first-child{width:104px;font-weight:700;color:var(--b1);font-family:ui-monospace,Consolas,monospace;font-size:12.5px;}
+  tbody tr:hover td{background:#252a36;}
+  .concl{background:linear-gradient(135deg,#221d33,#1b2434);border:1px solid #3a3358;border-radius:14px;
+    padding:20px 22px;margin:22px 0;}
+  .concl b{display:block;font-size:15.5px;margin-bottom:6px;color:#c2b6ff;}
+  .concl p{margin:0;font-size:14px;color:#b8c0d4;}
+
+  /* ---------- Easter egg ---------- */
+  .egg{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin:22px 0;
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.5);}
+  .egg-icos{display:flex;gap:12px;margin:6px 0 14px;}
+  .egg-ic{flex:1;background:#241e33;border:1px solid #372f4e;border-radius:12px;padding:16px 10px;text-align:center;
+    cursor:pointer;transition:transform .16s,background .16s,box-shadow .16s;position:relative;}
+  .egg-ic:hover{transform:translateY(-3px);background:#2b2342;box-shadow:0 12px 24px -12px rgba(139,125,255,.4);}
+  .egg-ic .sym{font-size:24px;display:block;background:var(--grad);background-clip:text;-webkit-background-clip:text;color:transparent;}
+  .egg-ic .cap{font-size:11.5px;color:var(--muted);display:block;margin-top:7px;}
+  .egg-ic .play{position:absolute;top:7px;right:9px;font-size:9px;letter-spacing:.05em;color:var(--b1);
+    opacity:0;transition:opacity .16s;font-weight:700;}
+  .egg-ic:hover .play{opacity:1;}
+  .egg-ic:hover .sym{animation:ring .5s ease;}
+  @keyframes ring{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}55%{transform:rotate(10deg)}80%{transform:rotate(-5deg)}}
+
+  /* ---------- App card ---------- */
+  .appcard{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:30px 0 10px;
+    box-shadow:0 2px 4px rgba(0,0,0,.3),0 24px 48px -20px rgba(0,0,0,.6);}
+  .appbar{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line);background:#22262d;}
+  .appbar .c{width:11px;height:11px;border-radius:50%;}
+  .appbar .r{background:#ff5f57}.appbar .y{background:#febc2e}.appbar .g{background:#28c840}
+  .appbar .tt{margin-left:auto;font-size:11px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;}
+  .appbar .x{margin-left:12px;color:var(--muted);font-size:14px;cursor:default;}
+  .appbody{padding:30px 26px;text-align:center;}
+  .appbody .logo{width:54px;height:54px;border-radius:15px;background:var(--grad);margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;font-size:27px;box-shadow:0 12px 26px -8px rgba(139,125,255,.55);}
+  .appbody h4{margin:0 0 8px;font-size:21px;font-weight:800;}
+  .verified{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--good);font-weight:600;margin-bottom:14px;}
+  .appbody .plat{display:flex;justify-content:center;gap:8px;margin-bottom:18px;}
+  .appbody .en{color:var(--muted);font-style:italic;font-size:13.5px;letter-spacing:.03em;}
+
+  footer{padding:34px 0 60px;text-align:center;color:var(--muted);font-size:12.5px;line-height:2;}
+  footer a{color:var(--b2);}
+
+  @media(max-width:640px){
+    .shell{padding:0 18px} .hero{padding:52px 0 30px}
+    .grid3{grid-template-columns:1fr} .tlist{grid-template-columns:1fr}
+    .way-head{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="kicker">theme the runtime, not the installer</div>
+    <h1>WorkBuddy 自定义主题，不动安装包 🎨</h1>
+    <p class="lead">这是一个面向 WorkBuddy 桌面端的第三方换肤工具——不改 <code>app.asar</code>、不破坏签名，而是把配色与背景注入正在运行的界面。可逆、可切换，一张图就是一种心情。<span class="sig">—— dress it up, keep it reversible.</span></p>
+    <div class="badges">
+      <span class="hero-ic">🎨</span>
+      <span class="pill"><span class="dot"></span>Skin Studio · v1.0.0</span>
+      <span class="pill ghost">macOS</span>
+      <span class="pill ghost">Windows</span>
+      <span class="pill ghost">MIT 开源 · 非腾讯官方产品</span>
+    </div>
+  </div>
+
+  <!-- 01 功能 -->
+  <section id="features">
+    <div class="num">01</div>
+    <h2>换的不只是皮 ✨</h2>
+    <p class="sub">CAPABILITIES · 它动的是渲染层，不是功能本体</p>
+    <p class="body">改颜色、换背景，顺手补几个每天用得到的小交互——WorkBuddy 该干的活一样不少，只是脸变了。三句话能讲完它的本事：</p>
+    <div class="grid3">
+      <div class="gcard"><div class="no">01</div><h3>主题即点即换</h3><p>右上角 🎨 菜单按原生 / 定制 / 图片 / 自定义分组，点一下就换。按钮能拖拽，位置会记住。</p></div>
+      <div class="gcard"><div class="no">02</div><h3>上传你的图</h3><p>丢一张图进去，自动吸出配色生成专属皮肤；动图保留动画，MP4 抽帧取色、循环静音当背景。</p></div>
+      <div class="gcard"><div class="no">03</div><h3>长对话定位</h3><p>回顶部 / 上一问 / 下一问 / 回到底——四个小按钮，翻长对话不再靠滚轮一下下蹭。</p></div>
+    </div>
+    <figure><img src="assets/preview-dynamic.gif" alt="视频主题动态背景"><figcaption>视频主题动态背景，循环静音播放<span class="tag">VIDEO</span></figcaption></figure>
+    <figure><img src="assets/preview-dark.png" alt="深色主题主界面"><figcaption>深色主题主界面 · 叠加背景与配色<span class="tag">DARK</span></figcaption></figure>
+    <figure><img src="assets/preview-menu.png" alt="主题选择菜单"><figcaption>右上角菜单 · 原生 / 定制 / 图片 / 自定义分组<span class="tag">MENU</span></figcaption></figure>
+
+    <p class="body" style="margin-top:26px">内置 18 款主题，从初音、原神到 QQ 2008 都有；不够就上传自己的图——相当于给工作台贴了张你的海报。</p>
+    <div class="tlist">
+      <div class="trow"><span class="idx">01</span><span class="name">QQ 2008</span><span class="tbadge CUSTOM">CUSTOM</span></div>
+      <div class="trow"><span class="idx">02</span><span class="name">腾讯云 TDP</span><span class="tbadge CUSTOM">CUSTOM</span></div>
+      <div class="trow"><span class="idx">03</span><span class="name">原神 · 星夜</span><span class="tbadge PICTURE">PICTURE</span></div>
+      <div class="trow"><span class="idx">04</span><span class="name">鸣潮 · 共鸣</span><span class="tbadge PICTURE">PICTURE</span></div>
+      <div class="trow"><span class="idx">05</span><span class="name">温泉雪 · 下雪</span><span class="tbadge VIDEO">VIDEO</span></div>
+      <div class="trow"><span class="idx">06</span><span class="name">＋ 上传自定义</span><span class="tbadge UPLOAD">UPLOAD</span></div>
+    </div>
+    <p class="slogan">—— your desktop, your rules.</p>
+    <hr class="hair">
+  </section>
+
+  <!-- 02 原理 -->
+  <section id="mechanism">
+    <div class="num">02</div>
+    <h2>不碰安装包，怎么换的 ⚙️</h2>
+    <p class="sub">MECHANISM · 核心是 Chromium DevTools Protocol</p>
+    <p class="body">CDP 允许外部进程连上运行中的页面，并在它的上下文里执行脚本。整个工具用 Node.js 编排，无第三方依赖，四步走：</p>
+    <ul class="feat">
+      <li><b>启动调试端口</b><span class="sep">——</span>按需重启 WorkBuddy，带上 <code>--remote-debugging-port=9223</code></li>
+      <li><b>找到渲染页</b><span class="sep">——</span>读 <code>127.0.0.1:9223/json/list</code>，筛出指向 <code>renderer/index.html</code> 的页面</li>
+      <li><b>注入</b><span class="sep">——</span>用 <code>Runtime.evaluate</code> 把样式和主题菜单写进页面</li>
+      <li><b>切换 / 移除</b><span class="sep">——</span>菜单里即点即换；<code>pause</code> 调用清理函数把注入拆掉</li>
+    </ul>
+    <p class="body">皮肤本体是一张极简清单——一张背景图加四个配色，就能生成整套界面变量覆盖：</p>
+    <pre><code>{
+  "id": "my-skin",
+  "name": "My Skin",
+  "hero": "hero.webp",
+  "colors": { "accent": "#24C9D7", "surface": "#F7FBFF" }
+}</code></pre>
+    <div class="note"><b>安全边界。</b>工具只连本机回环地址，外部网络够不着；但皮肤激活期间，别让来路不明的本机程序碰调试端口。主题可附带脚本在页面里跑，只用你信得过的主题。</div>
+    <p class="slogan">—— inject, don't patch.</p>
+    <hr class="hair">
+  </section>
+
+  <!-- 03 优缺点 -->
+  <section id="tradeoffs">
+    <div class="num">03</div>
+    <h2>爽点与代价 ⚖️</h2>
+    <p class="sub">TRADE-OFFS · 为什么是它，以及为什么不总是它</p>
+    <div class="grid3" style="grid-template-columns:1fr 1fr">
+      <div class="gcard"><div class="no" style="color:var(--good)">＋ 爽点</div><h3>可逆、免维护</h3><p>不写安装包、不破签名；官方更新不用重打补丁；菜单即点即换，<code>pause</code> 一键拆除。</p></div>
+      <div class="gcard"><div class="no" style="color:var(--warn)">− 代价</div><h3>重启即失效</h3><p>CDP 的天性：完整重启后皮肤消失，重跑一次 <code>apply</code> 恢复上次选择。非永久注入。</p></div>
+    </div>
+    <ul class="feat">
+      <li><b>形式自由</b><span class="sep">——</span>图片、动图、视频、整页 CSS，都能做成主题</li>
+      <li><b>依赖调试端口</b><span class="sep">——</span>需要匹配的 renderer 与 Node 环境，首次启动会重启应用</li>
+      <li><b>前端变了要适配</b><span class="sep">——</span>官方改了变量或 DOM 锚点，主题可能要跟着调</li>
+    </ul>
+    <div class="concl"><b>WorkBuddy 版本升级会怎样？</b><p>不修改安装包，所以升级不会像补丁那样被「顶掉」。但升级伴随重启，皮肤会失效——重跑一次 <code>apply</code> 即恢复。真正要留意的是：新版本若改了界面变量或结构，主题需针对性适配。免去重打补丁，不等于永远免适配。</p></div>
+    <p class="slogan">—— reversible by design.</p>
+    <hr class="hair">
+  </section>
+
+  <!-- 04 使用 -->
+  <section id="start">
+    <div class="num">04</div>
+    <h2>怎么装 🚀</h2>
+    <p class="sub">USAGE · 三种姿势，都是一步。先保存你正在跑的任务</p>
+
+    <div class="way">
+      <div class="way-head"><span class="way-no">Way 01</span><span class="way-os">macOS</span><span class="way-title">双击，或终端一行</span></div>
+      <div class="way-body">
+        <p>双击 <code>scripts/apply.command</code>，或在终端跑：</p>
+        <div class="cmdline"><pre><code>./scripts/apply.command</code></pre><button class="copy" data-cmd="./scripts/apply.command">复制</button></div>
+        <details><summary>查看安装细节</summary><div class="inner">脚本会先正常退出 WorkBuddy，再以调试模式重开并注入皮肤——请提前保存任务。Node 优先用 PATH 里的（≥18），找不到就回退到 WorkBuddy 自带的托管 Node。想恢复原生：<code>./scripts/pause.command</code>。</div></details>
+      </div>
+    </div>
+
+    <div class="way">
+      <div class="way-head"><span class="way-no">Way 02</span><span class="way-os">Windows</span><span class="way-title">推荐：双击 Start.bat</span></div>
+      <div class="way-body">
+        <p>双击仓库根目录的 <code>Start.bat</code> 即可，零配置。指定主题：</p>
+        <div class="cmdline"><pre><code>Start.bat mice-cat</code></pre><button class="copy" data-cmd="Start.bat mice-cat">复制</button></div>
+        <details><summary>查看安装细节</summary><div class="inner"><code>Start.bat</code> 是 <code>apply.ps1</code> 的批处理包装，内部以 <code>-ExecutionPolicy Bypass</code> 调起 PowerShell，不受系统执行策略限制。它用 WMI 派生 WorkBuddy 进程、不附着启动窗口——关掉窗口不会把 WorkBuddy 一起带走。成功自动关窗，失败会停住并显示原因。</div></details>
+      </div>
+    </div>
+
+    <div class="way">
+      <div class="way-head"><span class="way-no">Way 03</span><span class="way-os">AI 通用</span><span class="way-title">甩给你的 AI 助手</span></div>
+      <div class="way-body">
+        <p>懒得动手？把仓库地址发给任意 AI 编程助手，它会读 <code>SKILL.md</code> 自己装完：</p>
+        <div class="cmdline"><pre><code>用这个开源项目帮我更换 WorkBuddy 的主题</code></pre><button class="copy" data-cmd="用这个开源项目帮我更换 WorkBuddy 的主题">复制</button></div>
+        <details><summary>查看安装细节</summary><div class="inner">AI 会自动做平台检测 → 跑对应的 apply 脚本 → 注入 → 验证状态，你只需在它提示时保存好当前任务。之后日常切换都在右上角 🎨 菜单里进行。</div></details>
+      </div>
+    </div>
+
+    <p class="slogan">—— one double-click away.</p>
+    <hr class="hair">
+  </section>
+
+  <!-- 05 对比 -->
+  <section id="compare">
+    <div class="num">05</div>
+    <h2>改文件，还是改运行时 ⚔️</h2>
+    <p class="sub">asar 补丁式 vs CDP 注入式 · 关键选型</p>
+    <p class="body">换肤无非两条路：<b>改磁盘上的安装产物</b>，或<b>改内存里跑着的界面</b>。这个项目选了后者，理由是可逆与免维护。</p>
+    <div class="tw"><table><thead><tr><th>维度</th><th>asar 补丁式</th><th>CDP 注入式（本项目）</th></tr></thead><tbody>
+      <tr><td>本质</td><td>解包 <code>app.asar</code>、改 bundle、重打包</td><td>调试端口启动，<code>Runtime.evaluate</code> 注入运行时</td></tr>
+      <tr><td>持久性</td><td>落盘后重启不丢</td><td>重启失效，重跑 <code>apply</code> 恢复</td></tr>
+      <tr><td>代码签名</td><td>破坏官方签名与完整性</td><td>不碰官方文件，原封不动</td></tr>
+      <tr><td>更新适配</td><td>每次官方更新都要重新 diff 重打</td><td>不随更新失效，界面变了仍需适配</td></tr>
+      <tr><td>撤销还原</td><td>依赖备份；补丁错位可能起不来</td><td>页内清理 + <code>pause</code> 即撤销</td></tr>
+      <tr><td>安全暴露</td><td>安装包来源与补丁内容可信度</td><td>调试端口暴露面；只连本机回环</td></tr>
+    </tbody></table></div>
+    <p class="body">asar 补丁唯一的硬优势是<b>持久性</b>——重启不丢、不用看护。代价是破坏签名、每次更新重打、还原靠备份、补丁错位可能让应用起不来。对「换肤」这种非刚需，这个风险收益比不成立。CDP 的软肋是重启失效与调试端口暴露，前者靠「重跑即恢复」兜底，后者靠只回本机回环来控制。</p>
+    <div class="concl"><b>结论：选 CDP 注入式。</b><p>对「轻量、可逆、不追版本」的目标，它是更优解。除非哪天需求变成「企业强制统一皮肤、不允许用户关」——那时 asar 补丁的持久性才值得拿出来再聊。</p></div>
+    <p class="slogan">—— change the runtime, not the file.</p>
+  </section>
+
+  <!-- 结尾 App 卡 -->
+  <div class="appcard">
+    <div class="appbar"><span class="c r"></span><span class="c y"></span><span class="c g"></span><span class="tt">workbuddy-skin-studio</span><span class="x">×</span></div>
+    <div class="appbody">
+      <div class="logo">🎨</div>
+      <h4>WorkBuddy Skin Studio</h4>
+      <div class="verified">✓ Verified · v1.0.0</div>
+      <div class="plat"><span class="pill ghost">macOS</span><span class="pill ghost">Windows</span></div>
+      <div class="en">dress it up, or don't — the app stays intact.</div>
+    </div>
+  </div>
+
+  <footer>
+    第三方开源项目，非腾讯官方产品 · 代码 MIT，主题素材版权归各自权利人<br>
+    repo: <a href="https://github.com/LetitiaChan/workbuddy-skin-studio">LetitiaChan/workbuddy-skin-studio</a> · upstream: <a href="https://github.com/cdredfox/workbuddy-skin-studio">cdredfox/workbuddy-skin-studio</a>
+  </footer>
+</div>
+
+<script>
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.getAttribute('data-cmd');
+      var done = function(){ btn.textContent='已复制'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent='复制'; btn.classList.remove('ok'); }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done).catch(done); }
+      else { var t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(t); done(); }
+    });
+  });
+</script>
+</body>
+</html>

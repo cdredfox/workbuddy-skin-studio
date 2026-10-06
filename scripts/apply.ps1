@@ -11,7 +11,7 @@
   指定主题 id（默认用 miku-light）
 .EXAMPLE
   .\apply.ps1
-  .\apply.ps1 -Theme genshin-night
+  .\apply.ps1 -Theme mice-cat
   .\apply.ps1 -WorkBuddyExe "D:\apps\WorkBuddy\WorkBuddy.exe"
 #>
 [CmdletBinding()]

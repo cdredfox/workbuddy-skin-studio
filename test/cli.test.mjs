@@ -154,3 +154,27 @@ test("doctor：状态文件读取失败时 state 为 null 且不影响报告", a
   assert.equal(report.state, null);
   assert.equal(typeof report.appFound, "boolean");
 });
+
+test("status：透传 --port 并原样返回 skinStatus 结果", async () => {
+  const calls = [];
+  const result = await runCli(["status", "--port", "9333"], {
+    skinStatus: async (args) => {
+      calls.push(args);
+      return [{ installed: true, menu: true, themeId: "miku-light" }];
+    },
+  });
+  assert.deepEqual(calls, [{ port: 9333 }]);
+  assert.deepEqual(result, [{ installed: true, menu: true, themeId: "miku-light" }]);
+});
+
+test("status：默认端口 9223；非法端口直接报错，不发起 CDP", async () => {
+  const calls = [];
+  await runCli(["status"], {
+    skinStatus: async (args) => {
+      calls.push(args);
+      return [];
+    },
+  });
+  assert.deepEqual(calls, [{ port: 9223 }]);
+  await assert.rejects(runCli(["status", "--port", "80"], { skinStatus: async () => [] }), /--port/);
+});
