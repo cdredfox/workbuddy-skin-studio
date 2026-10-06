@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "mice-cat",
+  "name": "猫鼠 · 夜巡",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#E5B268",
+    "secondary": "#7F92B4",
+    "surface": "#161311",
+    "text": "#EFE2C4"
+  },
+  "copy": {
+    "tagline": "夜色巡游，机敏如风"
+  }
+}

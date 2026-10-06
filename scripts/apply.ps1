@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - Windows apply
 .DESCRIPTION
@@ -23,42 +23,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 
-function Find-WorkBuddyExe {
-  if ($WorkBuddyExe -and (Test-Path -LiteralPath $WorkBuddyExe)) { return $WorkBuddyExe }
-  if ($env:WORKBUDDY_EXE -and (Test-Path -LiteralPath $env:WORKBUDDY_EXE)) { return $env:WORKBUDDY_EXE }
-  $candidates = @(
-    (Join-Path $env:LOCALAPPDATA 'workbuddy\WorkBuddy.exe'),
-    (Join-Path $env:LOCALAPPDATA 'Programs\workbuddy\WorkBuddy.exe'),
-    (Join-Path $env:ProgramFiles 'WorkBuddy\WorkBuddy.exe')
-  )
-  if ($env:ProgramFiles(x86)) { $candidates += (Join-Path $env:ProgramFiles(x86) 'WorkBuddy\WorkBuddy.exe') }
-  foreach ($c in $candidates) { if (Test-Path -LiteralPath $c) { return $c } }
-  # 注册表 Uninstall 项
-  try {
-    $keys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
-    foreach ($k in $keys) {
-      Get-ItemProperty $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*WorkBuddy*' -and $_.InstallLocation } | ForEach-Object {
-        $p = Join-Path $_.InstallLocation 'WorkBuddy.exe'
-        if (Test-Path -LiteralPath $p) { return $p }
-      }
-    }
-  } catch {}
-  return $null
-}
-
-function Find-Node {
-  $g = Get-Command node -ErrorAction SilentlyContinue
-  if ($g) { return $g.Source }
-  $homeNode = Join-Path $env:USERPROFILE '.workbuddy\binaries\node\versions'
-  if (Test-Path $homeNode) {
-    $n = Get-ChildItem $homeNode -Directory | Sort-Object Name -Descending | Select-Object -First 1
-    if ($n) {
-      $exe = Join-Path $n.FullName 'node.exe'
-      if (Test-Path -LiteralPath $exe) { return $exe }
-    }
-  }
-  return $null
-}
+. (Join-Path $PSScriptRoot 'common.ps1')
 
 function Test-CDP([int]$P) {
   try {
@@ -67,7 +32,7 @@ function Test-CDP([int]$P) {
   } catch { return $false }
 }
 
-$exe = Find-WorkBuddyExe
+$exe = Find-WorkBuddyExe -Explicit $WorkBuddyExe
 if (-not $exe) {
   Write-Error "未找到 WorkBuddy.exe。请用 -WorkBuddyExe 参数或设置 `$env:WORKBUDDY_EXE 指向 WorkBuddy.exe"
   exit 1
@@ -89,7 +54,12 @@ if (Test-CDP $Port) {
   Get-Process WorkBuddy -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 2
   Write-Host "以 CDP 调试模式启动（端口 $Port）..."
-  Start-Process -FilePath $exe -ArgumentList "--remote-debugging-port=$Port"
+  # 用 Win32_Process.Create 启动：进程由 WMI 服务派生，不附着本控制台，
+  # 关闭本 PowerShell 窗口不会连带退出 WorkBuddy（Start-Process 会附着控制台，
+  # 关窗时 conhost 向附着进程发送 CTRL_CLOSE_EVENT 导致 WorkBuddy 被终止）
+  $cmdLine = '"{0}" --remote-debugging-port={1}' -f $exe, $Port
+  $spawn = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmdLine }
+  if ($spawn.ReturnValue -ne 0) { Write-Error "启动 WorkBuddy 失败（ReturnValue=$($spawn.ReturnValue)）"; exit 1 }
   $deadline = (Get-Date).AddSeconds(30)
   while (-not (Test-CDP $Port)) {
     if ((Get-Date) -ge $deadline) { Write-Error "CDP 在 30 秒内未就绪"; exit 1 }
@@ -103,3 +73,4 @@ $cli = Join-Path $Root 'src/cli.mjs'
 $applyArgs = @('apply', '--port', "$Port")
 if ($Theme) { $applyArgs += @('--theme', $Theme) }
 & $node $cli @applyArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

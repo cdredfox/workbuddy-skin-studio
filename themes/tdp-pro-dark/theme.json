@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "tdp-pro-dark",
+  "name": "腾讯云 TDP · 深色",
+  "css": "skin.css",
+  "js": "skin.js",
+  "thumbnail": "thumbnail.webp",
+  "order": -11,
+  "colors": {
+    "accent": "#8B7DFF",
+    "secondary": "#A78BFA",
+    "surface": "#0A1426",
+    "text": "#E5EAF3"
+  }
+}

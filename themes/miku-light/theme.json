@@ -1,13 +1,18 @@
 {
   "schemaVersion": 1,
   "id": "miku-light",
-  "name": "Miku Light",
+  "name": "Miku light",
+  "order": -1,
   "hero": "hero.webp",
+  "logo": "logo.webp",
+  "polaroid": "polaroid.webp",
   "colors": {
-    "accent": "#24C9D7",
-    "secondary": "#EF8FD3",
-    "surface": "#F7FBFF",
-    "text": "#17344F"
+    "accent": "#19c9e5",
+    "secondary": "#ed6ec1",
+    "surface": "#f5f6fc",
+    "text": "#122c60"
   },
-  "copy": null
+  "copy": {
+    "tagline": "歌声点亮每一天"
+  }
 }

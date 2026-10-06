@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - Windows pause
 .DESCRIPTION
@@ -11,19 +11,7 @@ param([int]$Port = 9223)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 
-function Find-Node {
-  $g = Get-Command node -ErrorAction SilentlyContinue
-  if ($g) { return $g.Source }
-  $homeNode = Join-Path $env:USERPROFILE '.workbuddy\binaries\node\versions'
-  if (Test-Path $homeNode) {
-    $n = Get-ChildItem $homeNode -Directory | Sort-Object Name -Descending | Select-Object -First 1
-    if ($n) {
-      $exe = Join-Path $n.FullName 'node.exe'
-      if (Test-Path -LiteralPath $exe) { return $exe }
-    }
-  }
-  return $null
-}
+. (Join-Path $PSScriptRoot 'common.ps1')
 
 $node = Find-Node
 if (-not $node) { Write-Error "未找到 node。"; exit 1 }

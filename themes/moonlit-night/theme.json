@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "moonlit-night",
+  "name": "月夜",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#0b2d73",
+    "secondary": "#6076a4",
+    "surface": "#0c1120",
+    "text": "#d1d8e7"
+  },
+  "copy": {
+    "tagline": "月色如水，思绪清明"
+  }
+}

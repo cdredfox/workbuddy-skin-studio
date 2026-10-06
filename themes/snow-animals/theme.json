@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "snow-animals",
+  "name": "下雪-温泉",
+  "hero": "hero.mp4",
+  "poster": "hero.webp",
+  "colors": {
+    "accent": "#6080a6",
+    "secondary": "#cd9989",
+    "surface": "#eef2f8",
+    "text": "#2a3444"
+  },
+  "copy": {
+    "tagline": "雪落温泉，暖意融融"
+  }
+}

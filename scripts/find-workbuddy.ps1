@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   WorkBuddy Skin Studio - 探测 WorkBuddy.exe 和 node 路径
 .DESCRIPTION
@@ -6,40 +6,7 @@
 #>
 $ErrorActionPreference = 'Continue'
 
-function Find-WorkBuddyExe {
-  if ($env:WORKBUDDY_EXE -and (Test-Path -LiteralPath $env:WORKBUDDY_EXE)) { return $env:WORKBUDDY_EXE }
-  $candidates = @(
-    (Join-Path $env:LOCALAPPDATA 'workbuddy\WorkBuddy.exe'),
-    (Join-Path $env:LOCALAPPDATA 'Programs\workbuddy\WorkBuddy.exe'),
-    (Join-Path $env:ProgramFiles 'WorkBuddy\WorkBuddy.exe')
-  )
-  if ($env:ProgramFiles(x86)) { $candidates += (Join-Path $env:ProgramFiles(x86) 'WorkBuddy\WorkBuddy.exe') }
-  foreach ($c in $candidates) { if (Test-Path -LiteralPath $c) { return $c } }
-  try {
-    $keys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
-    foreach ($k in $keys) {
-      Get-ItemProperty $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like '*WorkBuddy*' -and $_.InstallLocation } | ForEach-Object {
-        $p = Join-Path $_.InstallLocation 'WorkBuddy.exe'
-        if (Test-Path -LiteralPath $p) { return $p }
-      }
-    }
-  } catch {}
-  return $null
-}
-
-function Find-Node {
-  $g = Get-Command node -ErrorAction SilentlyContinue
-  if ($g) { return $g.Source }
-  $homeNode = Join-Path $env:USERPROFILE '.workbuddy\binaries\node\versions'
-  if (Test-Path $homeNode) {
-    $n = Get-ChildItem $homeNode -Directory | Sort-Object Name -Descending | Select-Object -First 1
-    if ($n) {
-      $exe = Join-Path $n.FullName 'node.exe'
-      if (Test-Path -LiteralPath $exe) { return $exe }
-    }
-  }
-  return $null
-}
+. (Join-Path $PSScriptRoot 'common.ps1')
 
 $exe = Find-WorkBuddyExe
 $node = Find-Node

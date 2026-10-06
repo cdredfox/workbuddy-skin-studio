@@ -297,6 +297,10 @@ export class CdpSession {
       WebSocketImpl = globalThis.WebSocket,
       commandTimeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
       connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS,
+      // 连接建立后需要 enable 的 CDP 域。Runtime.evaluate 不依赖 Runtime/Page 域启用，
+      // 默认不开：省掉每个会话的 enable 往返，也避免 Runtime 域把页面 console 事件
+      // （consoleAPICalled / executionContextCreated）持续推进本连接被逐条 JSON.parse
+      enableDomains = [],
     } = {},
   ) {
     parseLoopbackWebSocketUrl(webSocketDebuggerUrl);
@@ -305,11 +309,18 @@ export class CdpSession {
     }
     validateDuration(commandTimeoutMs, "commandTimeoutMs", { allowZero: false });
     validateDuration(connectTimeoutMs, "connectTimeoutMs", { allowZero: false });
+    if (
+      !Array.isArray(enableDomains) ||
+      !enableDomains.every((domain) => typeof domain === "string" && /^[A-Z][A-Za-z]*$/.test(domain))
+    ) {
+      throw new TypeError("enableDomains must be an array of CDP domain names");
+    }
 
     this.webSocketDebuggerUrl = webSocketDebuggerUrl;
     this.WebSocketImpl = WebSocketImpl;
     this.commandTimeoutMs = commandTimeoutMs;
     this.connectTimeoutMs = connectTimeoutMs;
+    this.enableDomains = [...enableDomains];
     this.socket = null;
     this.nextRequestId = 1;
     this.pending = new Map();
@@ -359,7 +370,7 @@ export class CdpSession {
       if (this.closed || this.socketOpen) return;
       this.clearConnectTimer();
       this.socketOpen = true;
-      Promise.all([this.send("Runtime.enable"), this.send("Page.enable")])
+      Promise.all(this.enableDomains.map((domain) => this.send(`${domain}.enable`)))
         .then(() => {
           if (this.closed) return;
           this.opened = true;
