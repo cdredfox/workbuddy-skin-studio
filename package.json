@@ -11,6 +11,7 @@
     "doctor": "node src/cli.mjs doctor",
     "status": "node src/cli.mjs status",
     "list": "node src/cli.mjs list",
-    "apply": "node src/cli.mjs apply"
+    "apply": "node src/cli.mjs apply",
+    "make-theme": "node scripts/make-theme.mjs"
   }
 }
