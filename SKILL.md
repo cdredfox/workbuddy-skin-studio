@@ -108,11 +108,17 @@ No official files are touched.
 - List available themes: `node src/cli.mjs list` (macOS) / same via PowerShell.
 - Built-ins include `miku-light`, `genshin-dawn`, `genshin-night`,
   `deepspace-dawn`, `deepspace-star`, `naruto-hokage`, `naruto-sasuke`,
-  `wuthering-echo`, `wuthering-tide`, `mice-cat`, `beach-night`, `cutie`,
-  `misty-fir-rain`, `moonlit-night`, `snow-animals`, plus three full-page CSS
+  `wuthering-echo`, `wuthering-tide`, `mice-cat`, `beach-night`, `sunset`,
+  `cutie`, `misty-fir-rain`, `moonlit-night`, `snow-animals`, `preset-aurora`,
+  `preset-starry`, `preset-liquid-glass-light`, `preset-liquid-glass-dark`,
+  plus three full-page CSS
   themes: `qq2008` (QQ 2008), `tdp-pro` / `tdp-pro-dark` (Tencent Cloud TDP,
-  light / dark). CSS themes appear under the "定制主题" group in the 🎨 menu;
-  image/video themes appear under "图片主题".
+  light / dark), plus ten pure-color CSS themes imported from
+  workbuddy-skin-skill: `focus-night`, `warm-paper`, `cyber-lobster`,
+  `stage-aurora`, `rose-glam`, `silver-idol`, `sakura-dream`, `mecha-core`,
+  `magical-night`, `pixel-campus`. Full-page CSS themes appear under the
+  "定制主题" group in the 🎨 menu, pure-color CSS themes under "配色主题"
+  (theme.json `group: "palette"`), and image/video themes under "图片主题".
 - If the user names a mood/character (e.g. "dark Genshin"), map it to the
   closest id, or just apply the default and let them pick from the 🎨 menu.
 - Running `apply` **without** `--theme` restores the user's last 🎨 menu choice:
@@ -188,6 +194,10 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 - `src/cli.mjs` — entry point: `list` / `create` / `apply` / `status` / `pause` / `doctor`.
 - `src/cdp-client.mjs` — CDP connection + renderer discovery.
 - `src/skin-css.mjs` — `--cb-*` variable overrides + background + container transparency.
+  Shared blocks: variable-override block and component accents are single-sourced for
+  image themes (`buildSkinCss`) and pure-color palette themes (`buildPaletteCss` — solid
+  surfaces, no hero; the palette theme's own `skin.css` is a decoration layer with the
+  theme's signature gradients, appended after the generated base at apply time).
 - `src/skin-menu.mjs` — the 🎨 in-app menu (switch / upload / delete / native) + draggable
   menu button (pointer-capture drag, 5px click/drag threshold, position persisted as
   viewport fractions so maximize/resize keeps the relative spot, viewport clamping,
@@ -199,17 +209,23 @@ renderer hint `renderer/index.html`. `npm test` should report all tests passing.
 - `src/state-store.mjs` — apply/pause receipt (`state.json`, atomic write, merge semantics).
 - `src/renderer-snippets.mjs` — shared in-page JS snippets (IndexedDB open, base64 decode).
 - `src/constants.mjs`, `src/theme-schema.mjs`, `src/theme-store.mjs` — config & theme model.
+- `scripts/make-theme.mjs` (`npm run make-theme -- <src> --id ID --name NAME`) — turn an
+  image / animated image / video into a bundled `themes/<id>/`: 16:9 crop → WebP; video
+  auto-transcode to H.264/yuv420p/≤1920/≤30fps/no audio/≤30MB (CRF → two-pass → trim)
+  + poster; palette + light/dark surfaces via the menu's algorithm; README row. Needs ffmpeg.
 - `scripts/apply.command` / `pause.command` — macOS launchers.
 - `Start.bat` (repo root) — Windows double-click entry: forwards to `apply.ps1`
   with an optional theme id, execution-policy-proof (`-ExecutionPolicy Bypass`).
 - `scripts/apply.ps1` / `pause.ps1` / `find-workbuddy.ps1` — Windows launchers
   (shared `Find-WorkBuddyExe` / `Find-Node` live in `scripts/common.ps1`).
-- `themes/` — 18 built-in theme folders (`theme.json` + `hero.webp`; video themes use
+- `themes/` — 33 built-in theme folders (`theme.json` + `hero.webp`; video themes use
   `hero.mp4` + `poster` image, e.g. `misty-fir-rain`, `snow-animals`; CSS themes use a
-  `css` field — optional `js` companion script and `order` sort key — e.g. `qq2008`,
-  `tdp-pro`, `tdp-pro-dark`). Any theme may set an optional `thumbnail` image (≤512KB,
-  640×400 WebP recommended) used as the theme-picker card cover; without it CSS themes
-  show an accent→secondary gradient and image themes extract their hero/poster.
+  `css` field — optional `js` companion script, `order` sort key, and `group` field:
+  `"custom"` (default, full-page ports like `qq2008`, `tdp-pro`, `tdp-pro-dark`) or
+  `"palette"` (pure-color ports, the ten workbuddy-skin-skill themes). Any theme may
+  set an optional `thumbnail` image (≤512KB, 640×400 WebP recommended) used as the
+  theme-picker card cover; without it CSS themes show an accent→secondary gradient
+  and image themes extract their hero/poster.
 - `test/` — Node built-in unit tests (`node:test`): theme schema/poster/CSS rules and
   path-escape guard, bundled-theme guard (every `themes/` dir loads and its `js`
   compiles), skin CSS generation (title gradient / tagline / two-tone wordmark),
