@@ -7,3 +7,6 @@ node_modules/
 
 # 打包产物（zip / 导出页面等）
 /outputs/
+
+# 临时调试脚本（本地排查用，不入库）
+/test/debug-*.mjs
