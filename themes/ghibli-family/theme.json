@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "ghibli-family",
+  "name": "吉卜力 · 全家福",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#5EA225",
+    "secondary": "#88675C",
+    "surface": "#EFF5EE",
+    "text": "#1E3127"
+  },
+  "copy": {
+    "tagline": "所有美好，齐聚一堂"
+  }
+}

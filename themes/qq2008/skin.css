@@ -374,6 +374,12 @@ code *,
   max-width: 860px !important;
 }
 
+/* 会话/主页壳层透明化：透出下层 teams-main-content 的 QQ 企鹅大图背景（亮/暗通用） */
+.conversation-shell,
+.wb-home-route {
+  background: transparent !important;
+}
+
 .wb-home-header__title,
 .claw-agent-chat-pane .colleague-chat-empty-profile__title {
   color: #223f54 !important;
@@ -679,10 +685,16 @@ body ::selection {
 .claw-agent-chat-pane {
   background-color: #eff9ff !important;
   background-image:
+    url("./qq-penguin-bg.png"),
     radial-gradient(circle at 91% 12%, rgba(255,255,255,.98) 0 2px, transparent 3px),
     radial-gradient(circle at 86% 18%, rgba(255,255,255,.88) 0 1px, transparent 2px),
     radial-gradient(ellipse at 82% 16%, rgba(255,255,255,.88), transparent 34%),
     linear-gradient(135deg, #cce9fa 0%, #f9fdff 44%, #d9effc 100%) !important;
+  /* 企鹅背景：顶天立地脚贴底（auto 100% + bottom），出画量用 vh 固定（28vh，
+     ≈图宽 29%）与容器宽度脱钩——窗口调整尺寸时出画比例恒定一致 */
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat !important;
+  background-position: right -28vh bottom, 0 0, 0 0, 0 0, 0 0 !important;
+  background-size: auto 100%, auto, auto, auto, auto !important;
 }
 
 .wb-home-header__title,
@@ -787,22 +799,22 @@ body [role="dialog"],
   opacity: 0 !important;
 }
 
-.wb-home-composer__input-slot [class*="topRightSlotStandalone"] {
+/* 主页输入框右上角吉祥物挂件：官方机器人(default-miao) → QQ 企鹅。
+   锚定结构类 .wb-home-route__growth-buddy（旧版 [class*="topRightSlotStandalone"] 已随版本失效）。
+   设计为「半身探出」：不抬升层叠，输入框卡片（DOM 序靠后）自然盖住企鹅下半身，
+   切口落在输入框上沿；尺寸 118px 使露出部分 = 头 + 围巾 + 少许白肚皮。 */
+.wb-home-route__growth-buddy {
   overflow: visible !important;
 }
 
-.wb-home-composer__input-slot [class*="topRightSlotStandalone"] img {
+.wb-home-route__growth-buddy img {
   content: url("./qq-penguin-user.png") !important;
-  width: 104px !important;
-  height: 104px !important;
-  top: 6px !important;
-  right: 2px !important;
   object-fit: contain !important;
+  width: 118px !important;
+  height: 118px !important;
+  top: 2px !important;
+  right: 0 !important;
   filter: drop-shadow(0 2px 2px rgba(25,72,105,.24));
-}
-
-.wb-home-composer__input-slot [class*="topRightSlotStandalone"] video {
-  display: none !important;
 }
 
 body.dark {
@@ -1024,10 +1036,15 @@ body.dark .welcome-container,
 body.dark .claw-agent-chat-pane {
   background-color: #0b1923 !important;
   background-image:
+    url("./qq-penguin-bg-dark.png"),
     radial-gradient(circle at 91% 12%, rgba(119, 199, 234, .34) 0 2px, transparent 3px),
     radial-gradient(circle at 86% 18%, rgba(119, 199, 234, .22) 0 1px, transparent 2px),
     radial-gradient(ellipse at 82% 16%, rgba(37, 96, 122, .28), transparent 34%),
     linear-gradient(135deg, #102b3b 0%, #0b1923 46%, #0e2330 100%) !important;
+  /* 企鹅背景：顶天立地脚贴底 + 出画 vh 固定（同亮色块说明） */
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat !important;
+  background-position: right -28vh bottom, 0 0, 0 0, 0 0, 0 0 !important;
+  background-size: auto 100%, auto, auto, auto, auto !important;
 }
 
 body.dark .wb-home-header__title,
@@ -1125,6 +1142,6 @@ body.dark ::selection {
   background: #257eaa !important;
 }
 
-body.dark .wb-home-composer__input-slot [class*="topRightSlotStandalone"] img {
+body.dark .wb-home-route__growth-buddy img {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .52)) brightness(.9);
 }

@@ -1,0 +1,20 @@
+/*
+ * pixel-campus 装饰层：主内容区视觉签名（配色移植自 workbuddy-skin-skill，
+ * MIT，作者 zhangxiaoqiang1991）。
+ * 换色基座（--cb-* 变量覆盖 + 实底表面）由注入器按 theme.json colors 生成并前置
+ * 拼接（buildPaletteCss）；本文件只保留每套主题的签名渐变，选择器适配当前版本
+ * 主内容锚点（.teams-main-content / .wb-home-route / [data-view-id=main-content]）。
+ */
+
+.teams-main-content,
+.main-content,
+.chat-container,
+.wb-home-route,
+[data-view-id=main-content] {
+  background-color: var(--wb-surface) !important;
+  background-image:
+    linear-gradient(rgba(38, 139, 210, 0.06) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(38, 139, 210, 0.06) 2px, transparent 2px),
+    radial-gradient(circle at 82% 18%, rgba(243, 182, 31, 0.2), transparent 30%) !important;
+  background-size: 24px 24px, 24px 24px, auto !important;
+}

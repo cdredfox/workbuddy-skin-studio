@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "pixel-campus",
+  "name": "Pixel Campus · 像素校园",
+  "css": "skin.css",
+  "order": -21,
+  "group": "palette",
+  "colors": {
+    "accent": "#268BD2",
+    "secondary": "#F3B61F",
+    "surface": "#EAF8FF",
+    "text": "#17344A"
+  }
+}

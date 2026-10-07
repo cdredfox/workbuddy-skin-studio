@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "totoro",
+  "name": "龙猫 · 树洞",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#1C4C3F",
+    "secondary": "#44744F",
+    "surface": "#0E1518",
+    "text": "#D4DDE0"
+  },
+  "copy": {
+    "tagline": "森林里的小憩"
+  }
+}

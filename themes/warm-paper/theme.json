@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "warm-paper",
+  "name": "Warm Paper · 暖纸墨色",
+  "css": "skin.css",
+  "order": -29,
+  "group": "palette",
+  "colors": {
+    "accent": "#B95F3D",
+    "secondary": "#695B4D",
+    "surface": "#F4EFE4",
+    "text": "#332B23"
+  }
+}

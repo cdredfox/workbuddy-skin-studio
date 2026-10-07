@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-liquid-glass-light",
+  "name": "液态玻璃·亮",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#6D8BE8",
+    "secondary": "#C9A2E8",
+    "surface": "#E9ECFB",
+    "text": "#232A4D"
+  },
+  "copy": null
+}

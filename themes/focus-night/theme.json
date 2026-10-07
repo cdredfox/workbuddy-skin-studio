@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "focus-night",
+  "name": "Focus Night · 专注夜色",
+  "css": "skin.css",
+  "order": -30,
+  "group": "palette",
+  "colors": {
+    "accent": "#67E8F9",
+    "secondary": "#2563EB",
+    "surface": "#090D13",
+    "text": "#EDF4FF"
+  }
+}

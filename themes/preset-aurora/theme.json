@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-aurora",
+  "name": "极光之夜",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#5AC8FA",
+    "secondary": "#8A6BF0",
+    "surface": "#0B122D",
+    "text": "#D8E6FF"
+  },
+  "copy": null
+}

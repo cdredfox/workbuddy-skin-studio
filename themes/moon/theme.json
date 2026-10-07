@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "moon",
+  "name": "月球",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#1C2029",
+    "secondary": "#6B6E74",
+    "surface": "#0E0F15",
+    "text": "#D4D6DC"
+  },
+  "copy": {
+    "tagline": "静谧的银色星球"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "rose-glam",
+  "name": "Rose Glam · 玫瑰红毯",
+  "css": "skin.css",
+  "order": -26,
+  "group": "palette",
+  "colors": {
+    "accent": "#FF5C8A",
+    "secondary": "#F7CB86",
+    "surface": "#1B0710",
+    "text": "#FFF7F7"
+  }
+}

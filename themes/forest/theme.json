@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "forest",
+  "name": "Forest",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -8,
+  "colors": {
+    "accent": "#4D895E",
+    "secondary": "#46533D",
+    "surface": "#1D302B",
+    "text": "#EDF6EC"
+  }
+}

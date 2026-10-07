@@ -1,0 +1,20 @@
+/*
+ * magical-night 装饰层：主内容区视觉签名（配色移植自 workbuddy-skin-skill，
+ * MIT，作者 zhangxiaoqiang1991）。
+ * 换色基座（--cb-* 变量覆盖 + 实底表面）由注入器按 theme.json colors 生成并前置
+ * 拼接（buildPaletteCss）；本文件只保留每套主题的签名渐变，选择器适配当前版本
+ * 主内容锚点（.teams-main-content / .wb-home-route / [data-view-id=main-content]）。
+ */
+
+.teams-main-content,
+.main-content,
+.chat-container,
+.wb-home-route,
+[data-view-id=main-content] {
+  background-color: var(--wb-surface) !important;
+  background-image:
+    radial-gradient(circle at 15% 18%, rgba(251, 211, 109, 0.12) 0 2px, transparent 3px),
+    radial-gradient(circle at 83% 22%, rgba(192, 132, 252, 0.29), transparent 32%),
+    radial-gradient(circle at 40% 82%, rgba(94, 234, 212, 0.1), transparent 34%),
+    linear-gradient(145deg, #100b2b, #211248) !important;
+}

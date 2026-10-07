@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "sakura-dream",
+  "name": "Sakura Dream · 樱粉梦境",
+  "css": "skin.css",
+  "order": -24,
+  "group": "palette",
+  "colors": {
+    "accent": "#E66FA5",
+    "secondary": "#A783DF",
+    "surface": "#FFF1F6",
+    "text": "#4B3040"
+  }
+}

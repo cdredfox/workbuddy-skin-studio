@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "twinkle-star",
+  "name": "星星人",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#CB9231",
+    "secondary": "#364D51",
+    "surface": "#F8F4EF",
+    "text": "#322E2A"
+  },
+  "copy": {
+    "tagline": "Twinkle Twinkle，闪闪发光"
+  }
+}

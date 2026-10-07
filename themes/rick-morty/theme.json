@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "rick-morty",
+  "name": "瑞克和莫蒂",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#41822C",
+    "secondary": "#686C3F",
+    "surface": "#131D16",
+    "text": "#D9E5DD"
+  },
+  "copy": {
+    "tagline": "传送门已开启"
+  }
+}

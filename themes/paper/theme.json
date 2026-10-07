@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "paper",
+  "name": "Paper",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -6,
+  "colors": {
+    "accent": "#DED2BC",
+    "secondary": "#443F36",
+    "surface": "#292723",
+    "text": "#FBF7ED"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "monet-sunrise",
+  "name": "莫奈 · 日出印象",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#4C6C66",
+    "secondary": "#747158",
+    "surface": "#15191E",
+    "text": "#DBE1E6"
+  },
+  "copy": {
+    "tagline": "一缕晨光，唤醒港口"
+  }
+}

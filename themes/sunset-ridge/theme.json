@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "sunset-ridge",
+  "name": "日落山脊",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#FCAF1A",
+    "secondary": "#FDCB6A",
+    "surface": "#2E2313",
+    "text": "#F5EBDA"
+  },
+  "copy": {
+    "tagline": "远山如黛，暮色四合"
+  }
+}

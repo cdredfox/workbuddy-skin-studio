@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "sakura",
+  "name": "Sakura",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -5,
+  "colors": {
+    "accent": "#E574AF",
+    "secondary": "#5C3F58",
+    "surface": "#31243F",
+    "text": "#FFF1F7"
+  }
+}

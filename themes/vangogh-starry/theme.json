@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "vangogh-starry",
+  "name": "梵高 · 星月夜",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#335295",
+    "secondary": "#608298",
+    "surface": "#111624",
+    "text": "#D7DDED"
+  },
+  "copy": {
+    "tagline": "星辰在夜空里燃烧"
+  }
+}

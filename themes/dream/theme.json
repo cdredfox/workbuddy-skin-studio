@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "dream",
+  "name": "Dream",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -9,
+  "colors": {
+    "accent": "#8470FF",
+    "secondary": "#17132A",
+    "surface": "#11152B",
+    "text": "#F4F2FF"
+  }
+}

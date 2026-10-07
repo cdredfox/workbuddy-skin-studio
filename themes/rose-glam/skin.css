@@ -1,0 +1,19 @@
+/*
+ * rose-glam 装饰层：主内容区视觉签名（配色移植自 workbuddy-skin-skill，
+ * MIT，作者 zhangxiaoqiang1991）。
+ * 换色基座（--cb-* 变量覆盖 + 实底表面）由注入器按 theme.json colors 生成并前置
+ * 拼接（buildPaletteCss）；本文件只保留每套主题的签名渐变，选择器适配当前版本
+ * 主内容锚点（.teams-main-content / .wb-home-route / [data-view-id=main-content]）。
+ */
+
+.teams-main-content,
+.main-content,
+.chat-container,
+.wb-home-route,
+[data-view-id=main-content] {
+  background-color: var(--wb-surface) !important;
+  background-image:
+    radial-gradient(circle at 82% 20%, rgba(255, 92, 138, 0.3), transparent 31%),
+    radial-gradient(circle at 38% 84%, rgba(247, 203, 134, 0.14), transparent 36%),
+    linear-gradient(140deg, #1b0710, #3b1023 56%, #210811) !important;
+}

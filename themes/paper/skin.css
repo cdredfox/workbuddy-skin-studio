@@ -1,0 +1,49 @@
+/* 移植自 JanCong/workbuddy-skin（MIT License）themes/paper
+   改写：.workbuddy-skin-active 作用域 → body 全局生效；
+   #workbuddy-skin-artwork 元素 → body::before 伪元素，SVG 由注入器内联为 data URL；
+   artwork 层 z-index 2147483000 → 2147482900，避让本地 🎨 菜单按钮（同层级） */
+body {
+  color-scheme: dark;
+  --workbuddy-skin-panel: rgba(48, 45, 40, 0.84);
+  --workbuddy-skin-border: rgba(222, 210, 188, 0.18);
+  --workbuddy-skin-shadow: rgba(38, 33, 27, 0.18);
+  background: linear-gradient(145deg, #292723 0%, #37332d 50%, #443f36 100%) !important;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147482900;
+  background-image: url("./paper.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.09;
+  pointer-events: none;
+}
+
+body [role="dialog"] {
+  border-color: var(--workbuddy-skin-border) !important;
+  background-color: var(--workbuddy-skin-panel) !important;
+  box-shadow: 0 24px 80px var(--workbuddy-skin-shadow) !important;
+  backdrop-filter: blur(20px);
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    color-scheme: light;
+    --workbuddy-skin-panel: rgba(255, 253, 247, 0.88);
+    --workbuddy-skin-border: rgba(105, 92, 69, 0.13);
+    --workbuddy-skin-shadow: rgba(111, 96, 72, 0.1);
+    background: linear-gradient(145deg, #eee4cf 0%, #fbf7ed 52%, #e8dfcc 100%) !important;
+  }
+
+  body::before {
+    opacity: 0.06;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body [role="dialog"] { backdrop-filter: none; }
+}

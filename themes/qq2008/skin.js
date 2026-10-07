@@ -2,23 +2,6 @@
 // 本文件作为函数体在主题激活时执行（new Function），返回值是拆除函数。
 // "./qq-*.wav|mp3" 等相对资源会在注入前被替换为 data URL，渲染进程内自包含。
 return (() => {
-  // ---- 企鹅挂件：fixed 定位，激活期间常驻 ----
-  const penguin = document.createElement("img");
-  penguin.id = "workbuddy-theme-penguin";
-  penguin.src = "./qq-penguin-user.png";
-  penguin.alt = "";
-  Object.assign(penguin.style, {
-    position: "fixed",
-    right: "18px",
-    top: "150px",
-    width: "56px",
-    height: "auto",
-    zIndex: "30",
-    pointerEvents: "none",
-    filter: "drop-shadow(0 2px 6px rgba(0,0,0,.25))",
-  });
-  document.body.appendChild(penguin);
-
   // ---- 音效：localStorage 键与旧项目一致（WORKBUDDY_THEME_SOUND_ENABLED/VOLUME）----
   const SOUND_ENABLED_KEY = "WORKBUDDY_THEME_SOUND_ENABLED";
   const SOUND_VOLUME_KEY = "WORKBUDDY_THEME_SOUND_VOLUME";
@@ -130,6 +113,5 @@ return (() => {
   return () => {
     observer.disconnect();
     for (const audio of [messageSound, failureSound, knockSound]) audio.pause();
-    penguin.remove();
   };
 })();

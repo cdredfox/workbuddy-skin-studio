@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "wukong",
+  "name": "黑神话 · 悟空",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#C9A24B",
+    "secondary": "#A94438",
+    "surface": "#1B1813",
+    "text": "#EDE3D0"
+  },
+  "copy": {
+    "tagline": "直面天命，重走西游"
+  }
+}

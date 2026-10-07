@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "aurora",
+  "name": "Aurora",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -10,
+  "colors": {
+    "accent": "#15D4B4",
+    "secondary": "#253B5B",
+    "surface": "#10253A",
+    "text": "#E6FFFA"
+  }
+}

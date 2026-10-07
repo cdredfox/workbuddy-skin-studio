@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "monet-waterlilies",
+  "name": "莫奈 · 睡莲",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#727857",
+    "secondary": "#466067",
+    "surface": "#1A1B1C",
+    "text": "#E1E3E3"
+  },
+  "copy": {
+    "tagline": "光影落在水面上"
+  }
+}

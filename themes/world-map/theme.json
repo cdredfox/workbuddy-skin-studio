@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "world-map",
+  "name": "世界时区图",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#292021",
+    "secondary": "#746E6F",
+    "surface": "#100F14",
+    "text": "#D6D6DB"
+  },
+  "copy": {
+    "tagline": "纵横经纬，一览全球"
+  }
+}

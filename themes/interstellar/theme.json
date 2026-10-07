@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "interstellar",
+  "name": "星际穿越",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#B38065",
+    "secondary": "#383E5C",
+    "surface": "#231C1E",
+    "text": "#EAE4E5"
+  },
+  "copy": {
+    "tagline": "穿越星海，抵达彼岸"
+  }
+}

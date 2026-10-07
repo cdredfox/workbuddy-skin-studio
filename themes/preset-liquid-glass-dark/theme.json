@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-liquid-glass-dark",
+  "name": "液态玻璃·暗",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#7C8FE8",
+    "secondary": "#9A7BD8",
+    "surface": "#0C0E1F",
+    "text": "#DDE1F2"
+  },
+  "copy": null
+}

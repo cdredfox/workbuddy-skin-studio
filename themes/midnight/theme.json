@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "midnight",
+  "name": "Midnight",
+  "css": "skin.css",
+  "thumbnail": "thumbnail.webp",
+  "group": "scenery",
+  "order": -7,
+  "colors": {
+    "accent": "#9BB5DC",
+    "secondary": "#1D314C",
+    "surface": "#111827",
+    "text": "#EDF3FF"
+  }
+}

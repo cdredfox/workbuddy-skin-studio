@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "silver-idol",
+  "name": "Silver Idol · 银白偶像",
+  "css": "skin.css",
+  "order": -25,
+  "group": "palette",
+  "colors": {
+    "accent": "#8B7BE8",
+    "secondary": "#6E7EA8",
+    "surface": "#EEF0F7",
+    "text": "#28283A"
+  }
+}

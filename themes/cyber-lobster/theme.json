@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "cyber-lobster",
+  "name": "Cyber Lobster · 赛博龙虾",
+  "css": "skin.css",
+  "order": -28,
+  "group": "palette",
+  "colors": {
+    "accent": "#FF6B5F",
+    "secondary": "#2DD4BF",
+    "surface": "#07111F",
+    "text": "#EEFCFF"
+  }
+}

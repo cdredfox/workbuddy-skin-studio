@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "stage-aurora",
+  "name": "Stage Aurora · 舞台极光",
+  "css": "skin.css",
+  "order": -27,
+  "group": "palette",
+  "colors": {
+    "accent": "#8B5CF6",
+    "secondary": "#4FF6D5",
+    "surface": "#0C0820",
+    "text": "#F7F4FF"
+  }
+}

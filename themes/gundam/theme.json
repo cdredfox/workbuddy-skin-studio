@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "gundam",
+  "name": "高达 · 钢铁之魂",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#573A33",
+    "secondary": "#72634D",
+    "surface": "#171217",
+    "text": "#DCDADE"
+  },
+  "copy": {
+    "tagline": "金属与光，整装出击"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "eva-unit01",
+  "name": "EVA · 初号机",
+  "hero": "hero.webp",
+  "colors": {
+    "accent": "#FF6B08",
+    "secondary": "#39FF14",
+    "surface": "#F5F0FB",
+    "text": "#1F0E39"
+  },
+  "copy": {
+    "tagline": "觉醒时刻，A.T.力场全开"
+  }
+}
