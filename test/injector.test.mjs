@@ -280,6 +280,38 @@ test("applySkin：CSS 主题资源内联为 data URL，菜单分组为 custom", 
   });
 });
 
+test("applySkin：CSS 主题 manifest.group 为 palette 时前置拼接换色基座，菜单分组透传", async () => {
+  await withTempDir(async (dir) => {
+    // palette 主题的 skin.css 只是装饰层（签名渐变），基座由 buildPaletteCss 生成
+    await writeFile(join(dir, "skin.css"), ".wb-home-route { background-image: linear-gradient(#000, #111) !important; }");
+    const paletteTheme = {
+      manifest: { id: "focus-night", name: "Focus Night", group: "palette", colors: { accent: "#67E8F9", secondary: "#2563EB", surface: "#090D13", text: "#EDF4FF" } },
+      cssPath: join(dir, "skin.css"),
+      root: dir,
+      heroPath: null,
+      posterPath: null,
+    };
+    const { Session, sessions } = sessionFactory();
+    const result = await applySkin({
+      loadedTheme: paletteTheme,
+      themes: [paletteTheme],
+      port: 9223,
+      deps: { Session, waitForRendererTargets: async () => [target("t1")] },
+    });
+    assert.equal(result.applied, 1);
+    const expression = sessions[0].lastCall();
+    assert.ok(expression.includes('"group":"palette"'), "palette 分组应透传进菜单脚本");
+    // 基座在前、装饰层在后（后者依赖前者定义的 --wb-surface 与覆盖顺序）
+    const baseAt = expression.indexOf("WORKBUDDY_PALETTE:focus-night");
+    const decorationAt = expression.indexOf(".wb-home-route { background-image:");
+    assert.ok(baseAt >= 0, "注入 CSS 应含生成的配色基座");
+    assert.ok(decorationAt > baseAt, "装饰层应拼在基座之后");
+    // 基座核心：--cb-* 变量覆盖按 theme.json colors 取色
+    assert.ok(expression.includes("--wb-accent: #67E8F9"));
+    assert.ok(expression.includes("--cb-bg-primary: var(--wb-surface) !important"));
+  });
+});
+
 test("applySkin：CSS 主题引用逃逸主题目录的资源时拒绝", async () => {
   await withTempDir(async (dir) => {
     await writeFile(join(dir, "skin.css"), 'a { background: url("./../outside.png"); }');

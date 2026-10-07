@@ -194,6 +194,34 @@ test("js 伴随脚本：仅纯 CSS 主题可携带，路径必须是目录内 .j
   }
 });
 
+test("group 分组：仅纯 CSS 主题可配置，取值限 custom/palette/scenery，CSS 主题缺省归 custom", () => {
+  const cssTheme = { schemaVersion: 1, id: "css-theme", name: "CSS", css: "skin.css" };
+  // 缺省：CSS 主题归 custom（定制主题），图片主题无分组（注入侧固定归 image）
+  assert.equal(validateThemeManifest(cssTheme).group, "custom");
+  assert.equal(validateThemeManifest(base).group, null);
+  // 显式配置
+  assert.equal(validateThemeManifest({ ...cssTheme, group: "palette" }).group, "palette");
+  assert.equal(validateThemeManifest({ ...cssTheme, group: "custom" }).group, "custom");
+  assert.equal(validateThemeManifest({ ...cssTheme, group: "scenery" }).group, "scenery");
+  // 图片主题不允许携带 group（含 scenery——纯 CSS 分类）
+  assert.throws(
+    () => validateThemeManifest({ ...base, group: "palette" }),
+    /only valid together with a css theme/,
+  );
+  assert.throws(
+    () => validateThemeManifest({ ...base, group: "scenery" }),
+    /only valid together with a css theme/,
+  );
+  // 非法取值
+  for (const group of ["image", "", "Palette", 1]) {
+    assert.throws(
+      () => validateThemeManifest({ ...cssTheme, group }),
+      /theme group must be/,
+      `group=${JSON.stringify(group)}`,
+    );
+  }
+});
+
 test("loadTheme：解析 jsPath，缺失时拒绝", async () => {
   await withTempDir(async (dir) => {
     await writeFile(join(dir, "skin.css"), "body { color: red; }");

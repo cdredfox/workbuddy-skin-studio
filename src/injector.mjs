@@ -3,7 +3,7 @@ import { extname, isAbsolute, relative, resolve, sep, win32 } from "node:path";
 
 import { CdpSession, fetchRendererTargets, waitForRendererTargets } from "./cdp-client.mjs";
 import { BASE64_DECODE_SNIPPET, IDB_OPEN_SNIPPET, VIDEO_DB_LITERALS } from "./renderer-snippets.mjs";
-import { buildSkinCss } from "./skin-css.mjs";
+import { buildPaletteCss, buildSkinCss } from "./skin-css.mjs";
 import { buildSkinMenuScript, CSS_SENTINELS, TEARDOWN_GLOBAL, VIDEO_LAYER_CSS } from "./skin-menu.mjs";
 import { probeAnimatedSize } from "./theme-store.mjs";
 
@@ -133,10 +133,18 @@ async function themeEntry(loadedTheme) {
 }
 
 async function themeEntryBody(loadedTheme) {
-  // 纯 CSS 主题（定制主题移植）：CSS 即皮肤本体，资源内联后直接使用，
-  // 不经过 buildSkinCss 模板；菜单分组标记为 custom（定制主题）
+  // 纯 CSS 主题（定制/配色主题移植）：CSS 即皮肤本体，资源内联后直接使用，
+  // 不经过 buildSkinCss 模板；菜单分组取 manifest.group（custom=定制主题，palette=配色主题，scenery=风景主题）。
+  // 配色主题（palette）的 skin.css 只是装饰层（主内容区签名渐变），真正的换色基座
+  // （--cb-* 变量覆盖 + 实底表面 + 组件点缀）由 buildPaletteCss 按 theme.json colors
+  // 生成并前置拼接——移植源（workbuddy-skin-skill）的 CSS 面向旧版本 DOM 类名
+  // （.cb-assistant-message/.wb-home-composer 等已更名），直注会大面积失配，
+  // 基座走当前版本的变量系统才能保证全组件一致取色
   if (loadedTheme.cssPath) {
-    const css = await inlineCssAssets(await readFile(loadedTheme.cssPath, "utf8"), loadedTheme.root, loadedTheme.manifest.id);
+    const rawCss = await inlineCssAssets(await readFile(loadedTheme.cssPath, "utf8"), loadedTheme.root, loadedTheme.manifest.id);
+    const css = loadedTheme.manifest.group === "palette"
+      ? buildPaletteCss({ theme: loadedTheme.manifest }) + "\n" + rawCss
+      : rawCss;
     const js = loadedTheme.jsPath
       ? await inlineJsAssets(await readFile(loadedTheme.jsPath, "utf8"), loadedTheme.root, loadedTheme.manifest.id)
       : null;
@@ -146,8 +154,9 @@ async function themeEntryBody(loadedTheme) {
       accent: loadedTheme.manifest.colors?.accent,
       secondary: loadedTheme.manifest.colors?.secondary,
       surface: loadedTheme.manifest.colors?.surface,
+      text: loadedTheme.manifest.colors?.text,
       css,
-      group: "custom",
+      group: loadedTheme.manifest.group ?? "custom",
       ...(js ? { js } : {}),
     };
   }

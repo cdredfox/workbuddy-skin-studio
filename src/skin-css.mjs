@@ -20,20 +20,12 @@ function copy(value, fallback = "") {
   return JSON.stringify(typeof value === "string" ? value : fallback);
 }
 
-export function buildSkinCss({ theme, heroDataUrl }) {
-  if (!/^data:image\/(?:png|jpeg|webp|gif|avif);base64,[a-z0-9+/=]+$/i.test(heroDataUrl)) {
-    throw new Error("hero 必须是本地 PNG、JPEG、WebP、GIF 或 AVIF 数据");
-  }
-  const colors = {
-    accent: color(theme.colors?.accent, DEFAULT_COLORS.accent),
-    secondary: color(theme.colors?.secondary, DEFAULT_COLORS.secondary),
-    surface: color(theme.colors?.surface, DEFAULT_COLORS.surface),
-    text: color(theme.colors?.text, DEFAULT_COLORS.text),
-  };
-  const id = String(theme.id ?? "custom").replace(/[^a-z0-9_-]/gi, "");
+// ---- 共享模板片段：图片主题（buildSkinCss）与配色主题（buildPaletteCss）同源，防漂移 ----
 
-  return `/* WORKBUDDY_SKIN:${id} */
-body[data-application-name=workbuddy] {
+// --cb-* 设计变量覆盖块：WorkBuddy renderer 的全局换色核心（60+ 变量，accent/secondary/
+// surface/text 四色驱动）。配色主题无 hero 底图，同样以此块为换色基座
+function buildVariableOverrides(colors) {
+  return `body[data-application-name=workbuddy] {
   --wb-accent: ${colors.accent};
   --wb-secondary: ${colors.secondary};
   --wb-surface: ${colors.surface};
@@ -91,7 +83,110 @@ body[data-application-name=workbuddy] {
   /* 描边 */
   --cb-stroke-secondary: color-mix(in srgb, var(--wb-accent) 45%, transparent) !important;
   --cb-markdown-hr-border-color: color-mix(in srgb, var(--wb-accent) 30%, transparent) !important;
+}`;
 }
+
+// 组件点缀块：全部 var() 引用、不依赖 hero 底图，图片/配色主题共用——
+// 「为你推荐」推荐条磨砂化、首页快捷 chips 透化、详情面板磨砂、
+// 首页主标题 accent→secondary 渐变、左上角 WorkBuddy 双色字标
+function buildComponentAccents() {
+  return `/* 「为你推荐」技能推荐条（.wb-skill-rec-bar，挂在 .wb-home-composer__skill-recommend 下）：
+   原生浅色 background:var(--wb-home-bg-secondary,#fafafa) —— 不透明白条 flex:1 横贯 composer，
+   ::before 还在条上方叠 32px 同色渐变托底，壁纸皮肤上呈整块白版、右端硬边；
+   且该条读的是 --wb-home-bg-secondary / --wb-color-palette-gray-3，不在 --cb-* 覆盖范围内。
+   改为磨砂半透明（与侧边栏同一语言），chips 同步透化，全 var() 引用随主题取色自适应 */
+.wb-skill-rec-bar {
+  background: color-mix(in srgb, var(--wb-surface) 55%, transparent) !important;
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+.wb-skill-rec-bar::before {
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wb-surface) 55%, transparent)) !important;
+}
+.wb-skill-rec-bar__label,
+.wb-skill-rec-bar__placeholder-text,
+.wb-skill-rec-bar__empty-text {
+  color: color-mix(in srgb, var(--wb-text) 78%, transparent) !important;
+  text-shadow: 0 1px 6px var(--wb-surface);
+}
+.wb-skill-rec-chip {
+  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
+  color: var(--wb-text) !important;
+  border: 1px solid color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+.wb-skill-rec-chip:hover {
+  background: color-mix(in srgb, var(--wb-accent) 22%, var(--wb-surface)) !important;
+}
+
+/* 首页快捷 chips（quick-actions 模式）与左右滚动渐隐、翻页箭头：
+   浅色原生分别是 #fff 底、#fff 硬编码渐变、#fff 箭头底，壁纸上同属一类白块 */
+.wb-home-composer__chips .quick-actions__item,
+.wb-home-composer__chip {
+  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
+  color: var(--wb-text) !important;
+  border-color: color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+.quick-actions--fade-right::after {
+  background: linear-gradient(270deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
+}
+.quick-actions--fade-left::before {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
+}
+.quick-actions__arrow {
+  background: color-mix(in srgb, var(--wb-surface) 72%, transparent) !important;
+  color: var(--wb-text) !important;
+}
+
+/* 详情面板半透明磨砂 */
+[data-view-id=detail-panel] {
+  background: color-mix(in srgb, var(--wb-surface) 88%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+/* 首页/空会话主标题：主题色渐变文字（accent→secondary，随主题/自定义取色自适应）。
+   不用 text-shadow 而用 filter:drop-shadow —— 透明填充文字上 text-shadow 会透过字形
+   显影发脏，drop-shadow 按字形 alpha 描光晕，繁忙壁纸上依然可读 */
+.wb-home-header__title,
+.claw-agent-chat-pane .colleague-chat-empty-profile__title {
+  background: linear-gradient(135deg, var(--wb-accent), var(--wb-secondary)) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 750 !important;
+  filter: drop-shadow(0 1px 6px var(--wb-surface));
+}
+
+/* 左上角 WorkBuddy 字标变身（参照 TDP 的双色 SVG 字标）：硬切渐变实现双色——
+   "Work" 用文本色、"Buddy" 用 accent（4/9 字符 ≈ 44% 处硬切）。全 var() 引用，
+   自定义皮肤随上传图片取色自动适配；无需 SVG 资源，避免哨兵色值在 data URL
+   编码后替换不到的坑 */
+.conversation-list-logo .logo-workbuddy-title {
+  background: linear-gradient(90deg, var(--wb-text) 0 44%, var(--wb-accent) 44% 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 800 !important;
+  letter-spacing: -.4px;
+}`;
+}
+
+export function buildSkinCss({ theme, heroDataUrl }) {
+  if (!/^data:image\/(?:png|jpeg|webp|gif|avif);base64,[a-z0-9+/=]+$/i.test(heroDataUrl)) {
+    throw new Error("hero 必须是本地 PNG、JPEG、WebP、GIF 或 AVIF 数据");
+  }
+  const colors = {
+    accent: color(theme.colors?.accent, DEFAULT_COLORS.accent),
+    secondary: color(theme.colors?.secondary, DEFAULT_COLORS.secondary),
+    surface: color(theme.colors?.surface, DEFAULT_COLORS.surface),
+    text: color(theme.colors?.text, DEFAULT_COLORS.text),
+  };
+  const id = String(theme.id ?? "custom").replace(/[^a-z0-9_-]/gi, "");
+
+  return `/* WORKBUDDY_SKIN:${id} */
+${buildVariableOverrides(colors)}
 
 #root {
   color: var(--wb-text) !important;
@@ -150,59 +245,7 @@ body[data-application-name=workbuddy] {
   background: linear-gradient(180deg, transparent 0 70%, color-mix(in srgb, var(--wb-surface) 50%, transparent) 100%) !important;
 }
 
-/* 「为你推荐」技能推荐条（.wb-skill-rec-bar，挂在 .wb-home-composer__skill-recommend 下）：
-   原生浅色 background:var(--wb-home-bg-secondary,#fafafa) —— 不透明白条 flex:1 横贯 composer，
-   ::before 还在条上方叠 32px 同色渐变托底，壁纸皮肤上呈整块白版、右端硬边；
-   且该条读的是 --wb-home-bg-secondary / --wb-color-palette-gray-3，不在 --cb-* 覆盖范围内。
-   改为磨砂半透明（与侧边栏同一语言），chips 同步透化，全 var() 引用随主题取色自适应 */
-.wb-skill-rec-bar {
-  background: color-mix(in srgb, var(--wb-surface) 55%, transparent) !important;
-  backdrop-filter: blur(14px) saturate(1.1);
-}
-.wb-skill-rec-bar::before {
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wb-surface) 55%, transparent)) !important;
-}
-.wb-skill-rec-bar__label,
-.wb-skill-rec-bar__placeholder-text,
-.wb-skill-rec-bar__empty-text {
-  color: color-mix(in srgb, var(--wb-text) 78%, transparent) !important;
-  text-shadow: 0 1px 6px var(--wb-surface);
-}
-.wb-skill-rec-chip {
-  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
-  color: var(--wb-text) !important;
-  border: 1px solid color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
-  backdrop-filter: blur(10px);
-}
-.wb-skill-rec-chip:hover {
-  background: color-mix(in srgb, var(--wb-accent) 22%, var(--wb-surface)) !important;
-}
-
-/* 首页快捷 chips（quick-actions 模式）与左右滚动渐隐、翻页箭头：
-   浅色原生分别是 #fff 底、#fff 硬编码渐变、#fff 箭头底，壁纸上同属一类白块 */
-.wb-home-composer__chips .quick-actions__item,
-.wb-home-composer__chip {
-  background: color-mix(in srgb, var(--wb-surface) 62%, transparent) !important;
-  color: var(--wb-text) !important;
-  border-color: color-mix(in srgb, var(--wb-accent) 32%, transparent) !important;
-  backdrop-filter: blur(10px);
-}
-.quick-actions--fade-right::after {
-  background: linear-gradient(270deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
-}
-.quick-actions--fade-left::before {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--wb-surface) 72%, transparent) 40%, transparent) !important;
-}
-.quick-actions__arrow {
-  background: color-mix(in srgb, var(--wb-surface) 72%, transparent) !important;
-  color: var(--wb-text) !important;
-}
-
-/* 详情面板半透明磨砂 */
-[data-view-id=detail-panel] {
-  background: color-mix(in srgb, var(--wb-surface) 88%, transparent) !important;
-  backdrop-filter: blur(18px) saturate(1.08);
-}
+${buildComponentAccents()}
 
 /* brand 文案（copy 为空时不显示） */
 #root::before {
@@ -231,34 +274,6 @@ body[data-application-name=workbuddy] {
   text-shadow: 0 0 8px var(--wb-surface), 0 2px 14px var(--wb-surface);
   pointer-events: none;
 }
-
-/* 首页/空会话主标题：主题色渐变文字（accent→secondary，随主题/自定义取色自适应）。
-   不用 text-shadow 而用 filter:drop-shadow —— 透明填充文字上 text-shadow 会透过字形
-   显影发脏，drop-shadow 按字形 alpha 描光晕，繁忙壁纸上依然可读 */
-.wb-home-header__title,
-.claw-agent-chat-pane .colleague-chat-empty-profile__title {
-  background: linear-gradient(135deg, var(--wb-accent), var(--wb-secondary)) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  font-weight: 750 !important;
-  filter: drop-shadow(0 1px 6px var(--wb-surface));
-}
-
-/* 左上角 WorkBuddy 字标变身（参照 TDP 的双色 SVG 字标）：硬切渐变实现双色——
-   "Work" 用文本色、"Buddy" 用 accent（4/9 字符 ≈ 44% 处硬切）。全 var() 引用，
-   自定义皮肤随上传图片取色自动适配；无需 SVG 资源，避免哨兵色值在 data URL
-   编码后替换不到的坑 */
-.conversation-list-logo .logo-workbuddy-title {
-  background: linear-gradient(90deg, var(--wb-text) 0 44%, var(--wb-accent) 44% 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  font-weight: 800 !important;
-  letter-spacing: -.4px;
-}
 ${theme.copy?.tagline ? `
 /* 主题标语（仅 copy.tagline 配置时输出，自定义皮肤 copy 为 null 不注入文案） */
 .wb-home-header::after {
@@ -276,4 +291,77 @@ ${theme.copy?.tagline ? `
   filter: drop-shadow(0 1px 4px var(--wb-surface));
 }
 ` : ""}`;
+}
+
+// 配色主题（group:"palette"，无图纯配色移植）：与图片主题共享 --cb-* 变量覆盖块与
+// 组件点缀块，区别在容器层——无 hero 底图，根层与各容器用表面色实底/浮层，
+// 各主题的视觉签名（主内容区渐变等）由主题目录 skin.css 装饰层叠加（注入器前置拼接本基座）
+export function buildPaletteCss({ theme }) {
+  const colors = {
+    accent: color(theme.colors?.accent, DEFAULT_COLORS.accent),
+    secondary: color(theme.colors?.secondary, DEFAULT_COLORS.secondary),
+    surface: color(theme.colors?.surface, DEFAULT_COLORS.surface),
+    text: color(theme.colors?.text, DEFAULT_COLORS.text),
+  };
+  const id = String(theme.id ?? "palette").replace(/[^a-z0-9_-]/gi, "");
+
+  return `/* WORKBUDDY_PALETTE:${id} */
+${buildVariableOverrides(colors)}
+
+/* 配色主题无壁纸：#root 实底表面色；容器逐层透明透出根层，构成均匀底色 */
+#root {
+  background: var(--wb-surface) !important;
+  color: var(--wb-text) !important;
+}
+
+.teams-container,
+.teams-container.is-mac {
+  background: var(--wb-surface) !important;
+}
+
+/* teams-grid-scroll-content / gridView 自带不透明底色（rgb(20,20,20)），透化让根层透出 */
+.teams-grid-scroll-content,
+[class*=gridView] {
+  background: transparent !important;
+}
+
+[data-view-id] {
+  background: transparent !important;
+}
+
+.conversation-list,
+.main-content,
+.main-content--welcome,
+.conversation-shell,
+.sidebar-next {
+  background: transparent !important;
+}
+
+/* 侧边栏浮层：surface 混入少量文字色——文字色恒为表面的对立极，
+   深色主题得微亮浮层、浅色主题得微深浮层，双向自适应无需分模式 */
+[data-view-id=sidebar] {
+  background: color-mix(in srgb, var(--wb-surface) 92%, var(--wb-text) 5%) !important;
+  border-right: 1px solid color-mix(in srgb, var(--wb-accent) 45%, transparent) !important;
+}
+
+/* 首页路由默认不透明深底，配色主题下钉为表面色（签名渐变由装饰层叠加） */
+.wb-home-route {
+  background: var(--wb-surface) !important;
+}
+
+/* 侧边栏选中态：accent 微光，让主题色在导航层可见（替代原生灰块） */
+[data-view-id=sidebar] [aria-selected="true"],
+[data-view-id=sidebar] [data-state="active"] {
+  background: color-mix(in srgb, var(--wb-accent) 16%, transparent) !important;
+}
+
+/* 底部输入框容器（cr-input-* 设计系统类）：不读 --cb-vscode-input-background，
+   原生明暗模式下都是固定灰底，配色主题下与表面色脱节；表面色混入少量文字色抬升 */
+.cr-input-container {
+  background: color-mix(in srgb, var(--wb-surface) 90%, var(--wb-text) 4%) !important;
+  border-color: color-mix(in srgb, var(--wb-accent) 30%, transparent) !important;
+}
+
+${buildComponentAccents()}
+`;
 }

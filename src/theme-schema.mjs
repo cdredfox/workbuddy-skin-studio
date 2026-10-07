@@ -81,6 +81,20 @@ function normalizeJs(js, hasCss) {
   return normalizeMediaPath(js, "js", new Set([".js"]), "a JS file");
 }
 
+// 弹窗分组：仅对纯 CSS 主题有意义。custom=定制主题（默认，如 TDP/QQ2008 整页移植），
+// palette=配色主题（无图纯配色移植，如 workbuddy-skin-skill 的 10 套配色）；
+// 图片/视频主题不提供此字段（注入侧固定归 image 组）
+const THEME_GROUPS = new Set(["custom", "palette", "scenery"]);
+
+function normalizeGroup(group, hasCss) {
+  if (group === undefined || group === null) return hasCss ? "custom" : null;
+  if (!hasCss) throw new Error("theme group is only valid together with a css theme");
+  if (typeof group !== "string" || !THEME_GROUPS.has(group)) {
+    throw new Error('theme group must be "custom", "palette", or "scenery"');
+  }
+  return group;
+}
+
 // 视频主题（hero 为 MP4）必须配 poster 海报帧图片：作 CSS 底图兜底，
 // 视频异步挂载/解码失败时不至于裸奔；图片 hero 不允许带 poster
 function normalizePoster(poster, hero) {
@@ -159,6 +173,7 @@ export function validateThemeManifest(input) {
     poster: hero === null ? null : normalizePoster(input.poster, hero),
     css,
     js: normalizeJs(input.js, css !== null),
+    group: normalizeGroup(input.group, css !== null),
     thumbnail: normalizeThumbnail(input.thumbnail),
     colors: normalizeColors(input.colors),
     copy: normalizeCopy(input.copy),

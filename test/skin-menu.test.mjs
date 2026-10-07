@@ -286,11 +286,15 @@ test("皮肤弹窗：遮罩 + 居中对话框 + 分类网格，Esc/backdrop/关�
   // 遮罩与对话框
   assert.ok(script.includes("position:fixed;inset:0;z-index:2147483001"));
   assert.ok(script.includes("grid-template-columns:repeat(auto-fill,minmax(128px,1fr))"));
-  // 分类小节：原生/定制/图片/自定义（定制、图片按 group 拆分）
+  // 分类小节：原生/定制/CSS/图片/自定义（定制=整页 CSS 移植；CSS 组合并 palette/scenery）
   assert.ok(script.includes(String.raw`section("\u539f\u751f\u4e3b\u9898")`));
   assert.ok(script.includes(String.raw`section("\u5b9a\u5236\u4e3b\u9898")`));
+  assert.ok(script.includes(String.raw`section("CSS\u4e3b\u9898")`));
   assert.ok(script.includes(String.raw`section("\u56fe\u7247\u4e3b\u9898")`));
   assert.ok(script.includes(String.raw`section("\u81ea\u5b9a\u4e49\u4e3b\u9898\uff08\u53ef\u5207\u6362\u660e\u6697\u4e3b\u8272\uff09")`));
+  // 分区顺序：自定义 > 定制 > 图片 > CSS > 原生（section() 调用次序即渲染次序）
+  const sectionOrder = ["\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898", "\\u5b9a\\u5236\\u4e3b\\u9898", "\\u56fe\\u7247\\u4e3b\\u9898", "CSS\\u4e3b\\u9898", "\\u539f\\u751f\\u4e3b\\u9898"].map((label) => script.indexOf('section("' + label));
+  assert.ok(sectionOrder.every((pos, index, list) => pos >= 0 && (index === 0 || list[index - 1] < pos)), "分区顺序应为 自定义>定制>图片>CSS>原生，实际位置：" + sectionOrder.join(","));
   // 缩略图：图片主题从条目 CSS 提取内联图（零额外负载），定制主题用渐变色块兜底
   assert.ok(script.includes("const thumbOf = (css) =>"));
   assert.ok(script.includes("const swatchOf = (theme) =>"));
@@ -361,7 +365,55 @@ test("皮肤弹窗：条目 thumb（theme.json thumbnail）优先作封面，非
   assert.doesNotThrow(() => new Function(script));
   const payload = JSON.parse(script.slice(script.indexOf("const data = ") + 13, script.indexOf(";\n", script.indexOf("const data = "))));
   assert.deepEqual(payload.themes.map((theme) => theme.thumb), [thumb, null, thumb]);
-  // 定制主题卡用 theme.thumb；图片主题 thumb 优先、hero 提取兜底
+  // 定制主题卡用 theme.thumb；CSS 主题卡 palette 用显式 thumb（无则 mock），scenery thumb 优先、内联图兜底
   assert.ok(script.includes("card(theme.name, { thumb: theme.thumb, swatch: swatchOf(theme)"));
-  assert.ok(script.includes("thumb: theme.thumb ?? thumbOf(theme.css)"));
+  assert.ok(script.includes('thumb: theme.group === "palette" ? theme.thumb : theme.thumb ?? thumbOf(theme.css)'));
+});
+
+test("皮肤弹窗：group 归一化为 custom/palette/scenery/image 四值，配色主题独立成组不混入图片组", () => {
+  const script = build({
+    entries: [
+      { id: "img", name: "图", css: "a{}" },                                    // 缺省归 image
+      { id: "tdp", name: "TDP", css: "b{}", group: "custom" },
+      { id: "fn", name: "FocusNight", css: "c{}", group: "palette" },
+      { id: "aur", name: "Aurora", css: "e{}", group: "scenery" },
+      { id: "bogus", name: "假", css: "d{}", group: "palette2" },               // 非法值归 image
+    ],
+    activeId: null,
+  });
+  assert.doesNotThrow(() => new Function(script));
+  const payload = JSON.parse(script.slice(script.indexOf("const data = ") + 13, script.indexOf(";\n", script.indexOf("const data = "))));
+  assert.deepEqual(
+    payload.themes.map((theme) => [theme.id, theme.group]),
+    [["img", "image"], ["tdp", "custom"], ["fn", "palette"], ["aur", "scenery"], ["bogus", "image"]],
+  );
+  // 四个分组过滤器互斥：palette/scenery 不再落入「非 custom 即图片」的旧口径
+  assert.ok(script.includes('theme.group === "custom"'));
+  assert.ok(script.includes('theme.group === "palette"'));
+  assert.ok(script.includes('theme.group === "scenery"'));
+  assert.ok(script.includes('theme.group === "image"'));
+});
+
+test("皮肤弹窗：配色主题卡用四色迷你界面模型（surface 实底 + accent 渐变标题条），显式 thumbnail 优先", () => {
+  const script = build({
+    entries: [{ id: "fn", name: "FocusNight", css: "c{}", group: "palette", accent: "#67E8F9", secondary: "#2563EB", surface: "#090D13", text: "#EDF4FF" }],
+    activeId: null,
+  });
+  assert.doesNotThrow(() => new Function(script));
+  // palette 卡在合并后的 CSS 分区中仍传 mock（theme 本体），swatch 仅作 mock 之外的兜底
+  assert.ok(/cssSection\.grid \}\);/.test(script));
+  assert.ok(script.includes('mock: theme.group === "palette" ? theme : null'));
+  // mock 构建器：surface 实底（与基座同式 surface 92% + text 5% 侧栏浮层）、accent→secondary 标题条、accent 胶囊按钮
+  assert.ok(script.includes("const paletteMock = (preview, theme) => {"));
+  assert.ok(script.includes('color-mix(in srgb," + surface + " 92%," + text + " 5%)'));
+  assert.ok(script.includes('linear-gradient(90deg," + accent + "," + secondary + ")'));
+  assert.ok(script.includes("border-radius:999px;background:\" + accent"));
+  // 封面优先级：显式 thumbnail > mock > swatch
+  assert.ok(script.includes("const useMock = mock && !thumb;"));
+  // payload 归一化：合法 text 透传，非法/缺失为 null（mock 内按 surface 明暗推导兜底色）
+  const payload = JSON.parse(script.slice(script.indexOf("const data = ") + 13, script.indexOf(";\n", script.indexOf("const data = "))));
+  assert.equal(payload.themes[0].text, "#EDF4FF");
+  const noText = build({ entries: [{ id: "x", name: "X", css: "a{}", text: "not-a-color" }], activeId: null });
+  const payload2 = JSON.parse(noText.slice(noText.indexOf("const data = ") + 13, noText.indexOf(";\n", noText.indexOf("const data = "))));
+  assert.equal(payload2.themes[0].text, null);
 });

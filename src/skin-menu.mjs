@@ -33,9 +33,12 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       name: typeof entry.name === "string" && entry.name.trim() ? entry.name : String(entry.id),
       accent: HEX_COLOR.test(entry.accent ?? "") ? entry.accent : DEFAULT_ACCENT,
       surface: typeof entry.surface === "string" ? entry.surface : "#ffffff",
+      text: HEX_COLOR.test(entry.text ?? "") ? entry.text : null,
       css: entry.css,
       kind: entry.kind === "video" || entry.kind === "animated" ? entry.kind : "image",
-      group: entry.group === "custom" ? "custom" : "image",
+      // 分组四值：custom=定制主题（整页 CSS 移植）、palette=配色主题（纯配色 CSS 移植）、
+      // scenery=风景主题（场景插画 CSS 移植）、image=图片/视频主题
+      group: entry.group === "custom" || entry.group === "palette" || entry.group === "scenery" ? entry.group : "image",
       js: typeof entry.js === "string" && entry.js ? entry.js : null,
       secondary: HEX_COLOR.test(entry.secondary ?? "") ? entry.secondary : null,
       // theme.json thumbnail 内联后的封面图；仅接受 data:image（防任意 URL 进 <img src>）
@@ -254,12 +257,14 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   };
   // 缩略图卡片：thumb 为 data URL 时以 <img> 元素作封面（属性通道不受 Blink 对超长
   // data URL CSS 声明的静默丢弃限制，内置大 hero 与动图都能正常显示），否则用
-  // swatch 渐变兜底（定制/原生主题）
-  const card = (label, { thumb = null, swatch = "rgba(0,0,0,.08)", onPick, before = null, parent }) => {
+  // swatch 渐变兜底（定制/原生主题）；mock 为配色主题的迷你界面模型预览（见 paletteMock）
+  const card = (label, { thumb = null, swatch = "rgba(0,0,0,.08)", mock = null, onPick, before = null, parent }) => {
     const item = document.createElement("div");
     item.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;cursor:pointer;border:2px solid transparent;background:color-mix(in srgb, currentColor 5%, transparent);box-sizing:border-box;";
     const preview = document.createElement("div");
-    preview.style.cssText = "position:relative;width:100%;aspect-ratio:16/10;border-radius:8px;background:" + swatch + ";overflow:hidden;";
+    // 封面优先级：显式 thumbnail > 配色 mock > swatch 色块
+    const useMock = mock && !thumb;
+    preview.style.cssText = "position:relative;width:100%;aspect-ratio:16/10;border-radius:8px;background:" + (useMock ? mock.surface : swatch) + ";overflow:hidden;";
     if (thumb) {
       const img = document.createElement("img");
       img.src = thumb;
@@ -267,10 +272,13 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
       img.draggable = false;
       img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;";
       preview.appendChild(img);
+    } else if (useMock) {
+      paletteMock(preview, mock);
     }
     const name = document.createElement("div");
     name.textContent = label;
-    name.style.cssText = "font-size:12px;line-height:18px;font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+    // 主题名最多两行（中英双语名普遍超一行）：-webkit-line-clamp 换行展示，超出仍截断
+    name.style.cssText = "font-size:12px;line-height:18px;font-weight:500;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;";
     item.append(preview, name);
     item.addEventListener("mouseenter", () => { if (item.style.borderColor === "transparent") item.style.borderColor = "rgba(36,201,215,.45)"; });
     item.addEventListener("mouseleave", () => paint(document.documentElement.dataset.workbuddySkin ?? null));
@@ -280,6 +288,35 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     });
     if (before) parent.insertBefore(item, before); else parent.appendChild(item);
     return item;
+  };
+  // 配色主题预览卡：纯配色主题无图可展示，单 accent→secondary 色块掩盖了主题的
+  // 视觉主体（surface 底色，深浅完全不可辨）。用四色搭迷你界面模型——surface 实底 +
+  // 侧边栏浮层（与 buildPaletteCss 同一 surface/text 混合式）+ accent 选中条 +
+  // accent→secondary 标题条 + 文字线 + accent 胶囊按钮，深浅/取色所见即所得
+  const paletteMock = (preview, theme) => {
+    const accent = theme.accent;
+    const secondary = theme.secondary ?? theme.accent;
+    const surface = theme.surface;
+    const text = theme.text ?? (isLightSurface(surface) ? "#1f2430" : "#eef2f8");
+    const soft = (c, p) => "color-mix(in srgb," + c + " " + p + "%,transparent)";
+    const bar = (css) => {
+      const d = document.createElement("div");
+      d.style.cssText = "position:absolute;pointer-events:none;" + css;
+      preview.appendChild(d);
+    };
+    // 侧边栏浮层 + accent 分隔线（与配色基座同式：surface 92% + text 5%）
+    bar("left:0;top:0;bottom:0;width:24%;background:color-mix(in srgb," + surface + " 92%," + text + " 5%);border-right:1px solid " + soft(accent, 45) + ";");
+    // 侧栏选中项与文字线
+    bar("left:4%;top:15%;width:16%;height:9%;border-radius:3px;background:" + soft(accent, 22) + ";");
+    bar("left:4%;top:33%;width:15%;height:4.5%;border-radius:2px;background:" + soft(text, 22) + ";");
+    bar("left:4%;top:43%;width:13%;height:4.5%;border-radius:2px;background:" + soft(text, 16) + ";");
+    // 主区标题条（accent→secondary 渐变，同首页主标题处理）
+    bar("left:32%;top:15%;width:42%;height:10%;border-radius:3px;background:linear-gradient(90deg," + accent + "," + secondary + ");");
+    // 主区文字线 ×2
+    bar("left:32%;top:36%;width:54%;height:5%;border-radius:2px;background:" + soft(text, 28) + ";");
+    bar("left:32%;top:47%;width:42%;height:5%;border-radius:2px;background:" + soft(text, 18) + ";");
+    // accent 胶囊按钮
+    bar("left:32%;top:66%;width:19%;height:12%;border-radius:999px;background:" + accent + ";");
   };
   // 从条目 CSS 中提取首个内联图片作缩略图（hero/poster 均为 data URL，零额外负载）。
   // 注意：本段位于模板字面量内，反斜杠转义会被吃掉——\/ 变 / 提前终结正则，
@@ -481,14 +518,10 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   };
   const swatchOf = (theme) => "linear-gradient(135deg," + theme.accent + "," + (theme.secondary ?? theme.accent) + ")";
 
-  // 原生主题：浅色/深色两张色块卡，分别钉住明暗模式
-  const nativeSection = section("\\u539f\\u751f\\u4e3b\\u9898");
-  const nativeLight = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6d45\\u8272", { swatch: "linear-gradient(135deg,#ffffff,#dde6f0)", onPick: () => { setNative("light"); closeDialog(); }, parent: nativeSection.grid });
-  rows.set("native-light", nativeLight);
-  const nativeDark = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6df1\\u8272", { swatch: "linear-gradient(135deg,#262b36,#101318)", onPick: () => { setNative("dark"); closeDialog(); }, parent: nativeSection.grid });
-  rows.set("native-dark", nativeDark);
+  // 自定义主题单独分类小节（置顶展示），标题行右侧显示槽位占用（x/n）
+  const customsSection = section("\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898\\uff08\\u53ef\\u5207\\u6362\\u660e\\u6697\\u4e3b\\u8272\\uff09");
 
-  // 定制主题（纯 CSS 皮肤，无 hero 底图）：theme.json thumbnail 作封面，
+  // 定制主题（整页 CSS 移植，无 hero 底图）：theme.json thumbnail 作封面，
   // 未配置时 accent→secondary 渐变色块兜底
   const customBuiltins = data.themes.filter((theme) => theme.group === "custom");
   if (customBuiltins.length > 0) {
@@ -501,7 +534,7 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
   }
 
   // 图片/视频主题：theme.json thumbnail 优先，否则从条目 CSS 提取首个内联图（hero/poster）
-  const imageThemes = data.themes.filter((theme) => theme.group !== "custom");
+  const imageThemes = data.themes.filter((theme) => theme.group === "image");
   if (imageThemes.length > 0) {
     const imageSection = section("\\u56fe\\u7247\\u4e3b\\u9898");
     for (const theme of imageThemes) {
@@ -511,9 +544,29 @@ export function buildSkinMenuScript({ entries, activeId, styleId, menuId, cssTem
     }
   }
 
+  // CSS 主题（纯配色 palette + 场景插画 scenery 合一展示）：
+  // group 值保留注入语义（palette 触发换色基座 buildPaletteCss），仅展示层合并。
+  // 封面优先级沿用 card 规则：显式 thumbnail > 配色 mock > CSS 内联图提取 > 渐变色块
+  const cssBuiltins = data.themes.filter((theme) => theme.group === "palette" || theme.group === "scenery");
+  if (cssBuiltins.length > 0) {
+    const cssSection = section("CSS\\u4e3b\\u9898");
+    for (const theme of cssBuiltins) {
+      // palette 卡走四色迷你界面模型（mock），不做内联图提取以免误盖 mock；
+      // scenery 卡 thumbnail 优先、CSS 内联图提取兜底
+      const item = card(theme.name, { thumb: theme.group === "palette" ? theme.thumb : theme.thumb ?? thumbOf(theme.css), mock: theme.group === "palette" ? theme : null, swatch: swatchOf(theme), onPick: () => { setTheme(theme.id); closeDialog(); }, parent: cssSection.grid });
+      attachBadge(item, theme.kind);
+      rows.set(theme.id, item);
+    }
+  }
+
+  // 原生主题（置底）：浅色/深色两张色块卡，分别钉住明暗模式
+  const nativeSection = section("\\u539f\\u751f\\u4e3b\\u9898");
+  const nativeLight = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6d45\\u8272", { swatch: "linear-gradient(135deg,#ffffff,#dde6f0)", onPick: () => { setNative("light"); closeDialog(); }, parent: nativeSection.grid });
+  rows.set("native-light", nativeLight);
+  const nativeDark = card("\\u539f\\u751f\\u754c\\u9762 \\u00b7 \\u6df1\\u8272", { swatch: "linear-gradient(135deg,#262b36,#101318)", onPick: () => { setNative("dark"); closeDialog(); }, parent: nativeSection.grid });
+  rows.set("native-dark", nativeDark);
+
   // ---- 自定义皮肤：本地选图/选视频 -> 压缩 -> 取色 -> 生成 CSS -> 持久化（多槽位） ----
-  // 自定义主题单独分类小节，标题行右侧显示槽位占用（x/n）
-  const customsSection = section("\\u81ea\\u5b9a\\u4e49\\u4e3b\\u9898\\uff08\\u53ef\\u5207\\u6362\\u660e\\u6697\\u4e3b\\u8272\\uff09");
   // updateSlots 同时负责上传卡显隐：uploadCard 是下方才声明的 const，但本函数首次调用
   // （初始化/增删皮肤）都发生在 uploadCard 声明之后，不存在 TDZ 问题
   const updateSlots = () => {

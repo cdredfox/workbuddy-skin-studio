@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSkinCss } from "../src/skin-css.mjs";
+import { buildPaletteCss, buildSkinCss } from "../src/skin-css.mjs";
 
 const HERO = "data:image/webp;base64,aGVsbG8=";
 const baseTheme = {
@@ -70,4 +70,53 @@ test("首页快捷 chips 与滚动渐隐：白底/白色渐变改为皮肤表面
   // 渐隐不再用硬编码 #fff，改走 surface 半透明渐变
   const fadeBlock = css.slice(css.indexOf(".quick-actions--fade-right::after"));
   assert.ok(!fadeBlock.includes("#fff"), "滚动渐隐不应硬编码白色");
+});
+
+// ---- buildPaletteCss：配色主题（无图纯配色）换色基座 ----
+
+test("配色主题基座：与图片主题共享同一 --cb-* 变量覆盖块（防模板漂移）", () => {
+  const palette = buildPaletteCss({ theme: baseTheme });
+  const image = buildSkinCss({ theme: baseTheme, heroDataUrl: HERO });
+  // 变量块逐字节一致：两者同源于 buildVariableOverrides
+  const extractBlock = (css) => css.slice(css.indexOf("body[data-application-name=workbuddy]"), css.indexOf("--cb-markdown-hr-border-color"));
+  assert.equal(extractBlock(palette), extractBlock(image));
+  // 四色落到 --wb-* 变量
+  assert.ok(palette.includes("--wb-accent: #5141F2"));
+  assert.ok(palette.includes("--wb-surface: #F5F6F8"));
+  assert.ok(palette.includes("--cb-bg-primary: var(--wb-surface) !important"));
+  assert.ok(palette.includes("--cb-text-link: var(--wb-accent) !important"));
+});
+
+test("配色主题基座：无 hero 实底表面，容器透化透出根层，侧边栏文字色微浮层", () => {
+  const css = buildPaletteCss({ theme: baseTheme });
+  assert.ok(css.includes("/* WORKBUDDY_PALETTE:demo */"));
+  // 不需要 hero：#root 与 teams-container 实底表面色（无 url() 背景图）
+  assert.ok(css.includes("#root {\n  background: var(--wb-surface) !important;"));
+  assert.ok(!css.includes("url("), "配色基座不应含任何背景图引用");
+  const containerBlock = css.slice(css.indexOf(".teams-container,"), css.indexOf(".teams-grid-scroll-content,"));
+  assert.ok(containerBlock.includes("background: var(--wb-surface) !important"));
+  // grid 容器与 [data-view-id] 透化
+  assert.ok(css.includes("[class*=gridView] {\n  background: transparent !important;"));
+  assert.ok(css.includes("[data-view-id] {\n  background: transparent !important;"));
+  // 侧边栏：surface 混文字色的双向明暗自适应浮层 + accent 选中微光
+  assert.ok(css.includes("color-mix(in srgb, var(--wb-surface) 92%, var(--wb-text) 5%)"));
+  assert.ok(css.includes('[data-view-id=sidebar] [aria-selected="true"]'));
+  // 首页路由钉为表面色
+  assert.ok(css.includes(".wb-home-route {\n  background: var(--wb-surface) !important;"));
+});
+
+test("配色主题基座：复用组件点缀块（主标题渐变/字标/推荐条），无 brand/headline 伪元素", () => {
+  const css = buildPaletteCss({ theme: baseTheme });
+  assert.ok(css.includes(".wb-home-header__title"));
+  assert.ok(css.includes(".conversation-list-logo .logo-workbuddy-title"));
+  assert.ok(css.includes(".wb-skill-rec-bar {"));
+  // 配色主题无 copy 文案概念：不注入 #root 伪元素
+  assert.ok(!css.includes("#root::before"));
+  assert.ok(!css.includes("#root::after"));
+});
+
+test("配色主题基座：非法色值拒绝，id 消毒与图片主题同规则", () => {
+  assert.throws(() => buildPaletteCss({ theme: { ...baseTheme, colors: { accent: "red" } } }), /无效主题颜色/);
+  const css = buildPaletteCss({ theme: { ...baseTheme, id: "Focus Night!!" } });
+  assert.ok(css.includes("WORKBUDDY_PALETTE:FocusNight"));
 });
